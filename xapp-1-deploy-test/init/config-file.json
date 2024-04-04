@@ -31,20 +31,9 @@
                 "port": 4560,
                 "rxMessages": ["RIC_SUB_RESP", "RIC_INDICATION","RIC_SUB_DEL_RESP"],
                 "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ"],
-                "policies": [],
+                "policies": [1],
                 "description": "rmr data port"
             }
         ]
-    },
-    "rmr": {
-        "protPort": "tcp:4560",
-        "maxSize": 2072,
-        "numWorkers": 1,
-        "txMessages": [],
-        "rxMessages": [],
-        "policies": []
-    },
-    "http":{
-        "protPort": "tcp:8080"
     }
 }
