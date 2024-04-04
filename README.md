@@ -1,5 +1,5 @@
 # xapp-workshop
-Workshop for writing xApps for the OSC platform using the OSC Python xApp framework.
+Workshop for writing xApps for the OSC platform using the OSC Python xApp framework. Based on OSC's xApp Writer's Guide v2. 
 
 **Contents**
 - Environment setup
