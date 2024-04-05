@@ -1,0 +1,39 @@
+{
+    "name": "xapp1deploytest",
+    "version": "1.0.0",
+    "containers": [
+        {
+            "name": "xapp1deploytestcontainer",
+            "image": {
+                "registry": "127.0.0.1:5001",
+                "name": "xapp1deploytest",
+                "tag": "1.0.0"
+            }
+        }
+    ],
+    "messaging": {
+        "ports": [
+            {
+                "name": "http",
+                "container": "xapp1deploytestcontainer",
+                "port": 8080,
+                "description": "http service"
+            },
+            {
+                "name": "rmrroute",
+                "container": "xapp1deploytestcontainer",
+                "port": 4561,
+                "description": "rmr route port for bouncer xapp"
+            },
+            {
+                "name": "rmrdata",
+                "container": "xapp1deploytestcontainer",
+                "port": 4560,
+                "rxMessages": ["RIC_SUB_RESP", "RIC_INDICATION","RIC_SUB_DEL_RESP"],
+                "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ"],
+                "policies": [1],
+                "description": "rmr data port"
+            }
+        ]
+    }
+}
