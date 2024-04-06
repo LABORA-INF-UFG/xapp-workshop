@@ -1,43 +1,129 @@
 # Class 1: Managing the xApps 
+At the end of this class, you should be able to:
+- Onboard, install, and uninstall xApps
+- Check xApp pods, services, and logs
+- Check registered xApps in the Application Manager
+- Manage the main aspects of an xApp descriptor (config-file)
+- Manage the main aspects of a static xApp route table
 
-## Managing the xApp lifecycle
+All exercises in this class refer to the `xapp-1-deploy-test` xApp, located in `xapp-workshop/exercise-xapps/xapp-1-deploy-test` folder. It is highly advisable to change to the xApp directory as every command assumes that it is the actual directory.
 
-Onboarding
+# Managing the xApp lifecycle
+
+In OSC's Near-RT RIC Kubernetes cluster, every xApp is installed as a pod, which contains one or more Docker containers, and a set of services, which addresses the pod's open ports. The information necessary to construct the xApp's pod and services is written in the xApp descriptor, commonly known as **config-file**. An optional **schema** file may accompany the config-file to validate its control section syntax. Both are `.json` files that can be found inside the `init/` directory.
+
+OSC provides a command line tool that facilitates the xApp management, the **dms_cli**.
+
+## Onboarding
+
+For the xApp to be instantiated by the Application Manager (AppMgr) in the Near-RT RIC platform, the first step is to **onboard** the xApp. This process consists of generating a Helm chart that describes the xApp and is available at a **Helm chart repository** (chartmuseum). To be accessed, the chartmuseum URL must be set in the `CHART_REPO_URL` environmental variable (already set on the blueprint).
+
+Given the **config-file** and **schema** JSONs, the **dms_cli** can onboard the xApp, which verifies if there is any error in the xApp configuration, then generating the xApp **Helm chart** and pushing it to the charmuseum. 
+
+**EXERCISE 1**
+
+Onboard the `xapp-1-deploy-test` xApp.
 
 ```bash
 dms_cli onboard <CONFIG_FILE_PATH> <SCHEMA_PATH>
 ```
 
-Installing
+<p>
+<details>
+<summary>Solution</summary>
+
+```bash
+dms_cli onboard init/config-file.json init/schema-file.json
+```
+
+</details>
+</p>
+
+**EXERCISE 2**
+
+Check onboarded xApps.
+
+```bash
+dms_cli get_charts_list
+```
+
+## Installing
+
+Onboarded xApps can be installed by triggering the AppMgr to read the xApp Helm chart and instantiate the xApp pod and services in a Kubernetes namespace. By standard, the namespace for installing OSC xApps is `ricxapp`.
+
+The identification for an xApp Helm chart is a **name** and a **version**, both obrigatorily described in the xApp's config-file.
+
+**EXERCISE 3**
+
+Install the onboarded `xapp-1-deploy-test` xApp.
 
 ```bash
 dms_cli install <XAPP_NAME> <XAPP_VERSION> <NAMESPACE>
 ```
 
-Uninstalling
+<p>
+<details>
+<summary>Solution</summary>
+
+```bash
+dms_cli install xapp-1-deploy-test 1.0.0 ricxapp
+```
+
+</details>
+</p>
+
+
+## Uninstalling
+
+In OSC's Near-RT RIC there can not be two xApps with the same name in the same namespace. From that, the identifier for the running xApp instance consists of only its **name** and **namespace**.
+
+Note that two versions of the same xApp can not be running simultaneously, although both can be onboarded. That is why the installation requires the xApp version!
+
+The dms_cli also has `upgrade` and `rollback` commands to deal with xApp versions, but as both are equal to uninstalling the running version and installing another one, they can be ignored.
+
+**EXERCISE 4**
+
+Uninstall the `xapp-1-deploy-test`.
 
 ```bash
 dms_cli uninstall <XAPP_NAME> <NAMESPACE>
 ```
+
+<p>
+<details>
+<summary>Solution</summary>
+
+```bash
+dms_cli uninstall xapp-1-deploy-test ricxapp
+```
+
+</details>
+</p>
 
 ## Checking the xApp
 
 Pods
 
 ```bash
-kubectl get pods -n <NAMESPACE>
+kubectl -n <NAMESPACE> get pods 
 ```
 
 Logging
 
 ```bash
-kubectl logs POD/<XAPP_POD_NAME> -n <NAMESPACE>
+kubectl -n <NAMESPACE> logs POD/<XAPP_POD_NAME> 
+```
+
+Registered xApps
+
+```bash
+curl -X GET http://$(kubectl get pods -n ricplt -o wide | grep appmgr | awk '{print $6}'):8080/ric/v1/xapps
 ```
 
 Services
 
 ```bash
-kubectl get svc -n <NAMESPACE>
+kubectl -n <NAMESPACE> get svc
 ```
 
 ## Config-file (xApp descriptor)
