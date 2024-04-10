@@ -225,7 +225,7 @@ When an xApp starts to run, one of its first tasks is to register to the AppMgr.
 
 The AppMgr exposes the `8080` port for HTTP communication. To obtain the AppMgr's list of registered xApps in a JSON, send an HTTP GET request to the path `/ric/v1/xapps`.
 
------------------------------------------------------------------------- **EXERCISE 10** ------------------------------------------------------------------------
+------------------------------------------------------------------------ **EXERCISE 10** -----------------------------------------------------------------------
 
 Consult the AppMgr to get the registered xApps. Remember you can use `kubectl -n ricplt get pods -o wide` to get the AppMgr's IP. 
 
@@ -252,7 +252,7 @@ Kubernetes pods expose their ports as Kubernetes services, which have their own 
 
 Checking for services can be done using the `kubectl get svc` command, which works similarly to `kubectl get pods`. The namespace should be informed with `-n`, otherwise, `-A` can be used to list services from all namespaces. Extra information can also be obtained with the `-o wide` option.
 
------------------------------------------------------------------------- **EXERCISE 11** ------------------------------------------------------------------------
+------------------------------------------------------------------------ **EXERCISE 11** -----------------------------------------------------------------------
 
 Check for available services for all running xApps.
 
@@ -294,7 +294,7 @@ The obligatory field in the `"messaging"` section is `"ports"`, which contains a
 - `"port"`: the number of the port that will be open
 - `"description"`: a description of the port
 
------------------------------------------------------------------------- **EXERCISE 12** ------------------------------------------------------------------------
+------------------------------------------------------------------------ **EXERCISE 12** -----------------------------------------------------------------------
 
 Edit the `config-file.json` to change the xApp's name and version. The version must be three numbers separated by a `.`, otherwise the config-file won't pass dms_cli validation.  Onboard the xApp again and check if anything changed in the xApp charts list (using the `dms_cli`).
 
@@ -322,7 +322,7 @@ dms_cli get_charts_list
 </details>
 </p>
 
------------------------------------------------------------------------- **EXERCISE 13** ------------------------------------------------------------------------
+------------------------------------------------------------------------ **EXERCISE 13** -----------------------------------------------------------------------
 
 Re-install the xApp with the new configuration and check if there is any changes in the xApp pod and services.
 
@@ -353,7 +353,7 @@ Besides `"name"`, `"version"`, and `"containers"`, the `"messaging"` section is 
 
 For the xApp to be installed, it is required to specify at least one RMR port. In our example, only the RMR data port (for RMR messages) is open, at port 4560. 
 
------------------------------------------------------------------------- **EXERCISE 14** ------------------------------------------------------------------------
+------------------------------------------------------------------------ **EXERCISE 14** ----------------------------------------------------------------------
 
 Check the available open ports of the xApp.
 
@@ -370,7 +370,7 @@ There is only one service, which refers to the RMR data port (4560).
 </details>
 </p>
 
------------------------------------------------------------------------- **EXERCISE 15** ------------------------------------------------------------------------
+------------------------------------------------------------------------ **EXERCISE 15** -----------------------------------------------------------------------
 
 Edit the `config-file.json` as described below:
 - Add a port with the name "http" at port 8080
@@ -437,7 +437,7 @@ The `rmrdata` port may define additional fields in the config-file:
 - `"rxMessages"`: contains an array of strings, each one being a type of message that the xApp may receive via RMR
 - `"policies"`: contains an array of integers, each one being a policy that the xApp can receive via the A1 interface
 
------------------------------------------------------------------------- **EXERCISE 16** ------------------------------------------------------------------------
+------------------------------------------------------------------------ **EXERCISE 16** -----------------------------------------------------------------------
 
 Add the fields described above to the `rmrdata` port in the config-file to specify the messages and policies below:
 - Transmitted message types: `RIC_SUB_REQ` and `RIC_SUB_DEL_REQ`
