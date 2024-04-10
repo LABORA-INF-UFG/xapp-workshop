@@ -203,7 +203,7 @@ The logs of OSC's Near-RT RIC components and xApps using OSC's xApp frameworks c
 ------------------------------------------------------------------------ **EXERCISE 9** ------------------------------------------------------------------------
 
 ```bash
-kubectl -n <NAMESPACE> logs POD/<XAPP_POD_NAME> 
+kubectl -n <NAMESPACE> logs <XAPP_POD_NAME> 
 ```
 
 <p>
@@ -213,7 +213,7 @@ kubectl -n <NAMESPACE> logs POD/<XAPP_POD_NAME>
 This is a generic solution to look for the pod's name and use it for logging.
 
 ```bash
-kubectl -n ricxapp logs POD/$(kubectl get pods -n ricxapp | grep xapp1deploytest | awk '{print $1}')> 
+kubectl -n ricxapp logs $(kubectl get pods -n ricxapp | grep xapp1deploytest | awk '{print $1}')> 
 ```
 
 </details>
