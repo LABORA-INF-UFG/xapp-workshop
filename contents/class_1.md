@@ -1,10 +1,10 @@
-# Class 1: Managing the xApps 
+# Class 1: Managing, checking, and configuring xApps
 At the end of this class, you should be able to:
 - Onboard, install, and uninstall xApps
+- Build and push xApp images
 - Check xApp pods, services, and logs
 - Check registered xApps in the Application Manager
 - Manage the main aspects of an xApp descriptor (config-file)
-- Manage the main aspects of a static xApp route table
 
 All exercises in this class refer to the `xapp-1-deploy-test` xApp, located in `xapp-workshop/exercise-xapps/xapp-1-deploy-test` folder. It is highly advisable to change to the xApp directory as every command assumes that it is the actual directory.
 
@@ -12,7 +12,7 @@ All exercises in this class refer to the `xapp-1-deploy-test` xApp, located in `
 
 In OSC's Near-RT RIC Kubernetes cluster, every xApp is installed as a pod, which contains one or more Docker containers, and a set of services, which addresses the pod's open ports. The information necessary to construct the xApp's pod and services is written in the xApp descriptor, commonly known as **config-file**. An optional **schema** file may accompany the config-file to validate its control section syntax. Both are `.json` files that can be found inside the `init/` directory.
 
-OSC provides a command line tool that facilitates the xApp management, the **dms_cli**.
+OSC provides a command line tool that facilitates the xApp management: the **dms_cli**.
 
 ## Onboarding
 
@@ -49,9 +49,70 @@ dms_cli get_charts_list
 
 ## Building
 
+To generate the Docker images necessary to instantiate the Docker containers that compose the xApp pod, we need a **Dockerfile** describing how the image is constructed. By standard, the xApp Dockerfile is located at the root of the xApp folder. In our exercise, its path is `./Dockerfile`.
 
+The Dockerfiles for the xApps in this workshop are basically the same. The list below summarizes what it is doing:
+- Start basing the image contruction from Alpine Linux image
+- Downloads, compiles, and configures the Ric Message Router (RMR)
+- Install dependencies, like gcc and the requests library
+- Clones and installs the OSC's Python xApp Framework
+- Copies the xApp source code to `/tmp/` and execute its `setup.py`
+- Sets environmental variables, like the config-file (xApp descriptor) location and the log level for RMR logs
+- Execute the xApp entrypoint (defined in `setup.py`) to start running the xApp
+
+The `docker build` command is used for building the xApp's Docker image. Make sure that you are in the same directory of the Dockerfile. When building, it is important to specify the registry, image name, and image tag for future reference. It is also necessary to specify `--network host` in the build command to access the host's network while cloning repositories and downloading dependencies.
+
+**EXERCISE 3**
+
+Build the xApp Docker image. Use the xApp's name `xapp1deploytest` and version `1.0.0` to match its config-file.
+
+```bash
+docker build . -t 127.0.0.1:5001/<XAPP_NAME>:<XAPP_VERSION> --network host
+```
+
+<p>
+<details>
+<summary>Solution</summary>
+
+```bash
+docker build . -t 127.0.0.1:5001/xapp1deploytest:1.0.0 --network host
+```
+
+</details>
+</p>
 
 ## Pushing
+
+After building the xApp Docker image, it should be listed in the `docker images` command, which displays locally available images. The next step is to push the image using `docker push` to send it to the local Docker registry. This registry is referenced in the xApp's config-file as the source for xApp images and will be accessed by the AppMgr to deploy the xApp.
+
+The registry hostname and port to manage Docker images are `127.0.0.1:5001`. Note that they are informed during the image build. 
+
+**EXERCISE 4**
+
+List the locally available Docker images. Look for the `xapp1deploytest` xApp.
+
+```bash
+docker images
+```
+
+**EXERCISE 5**
+
+Use the **REPOSITORY** and **TAG** of the `xapp1deploytest` xApp image (displayed in the previous exercise) to push it to the local Docker registry.
+
+```bash
+docker push <REPOSITORY>:<TAG>
+```
+
+<p>
+<details>
+<summary>Solution</summary>
+
+```bash
+docker push 127.0.0.1:5001/xapp1deploytest:1.0.0
+```
+
+</details>
+</p>
 
 ## Installing
 
@@ -59,7 +120,7 @@ Onboarded xApps can be installed by triggering the AppMgr to read the xApp Helm 
 
 The identification for an xApp Helm chart is a **name** and a **version**, both obrigatorily described in the xApp's config-file.
 
-**EXERCISE X**
+**EXERCISE 6**
 
 Install the onboarded `xapp-1-deploy-test` xApp.
 
@@ -86,7 +147,7 @@ Note that two versions of the same xApp can not be running simultaneously, altho
 
 The dms_cli also has `upgrade` and `rollback` commands to deal with xApp versions, but as both are equal to uninstalling the running version and installing another one, they can be ignored.
 
-**EXERCISE X**
+**EXERCISE 7**
 
 Uninstall the `xapp-1-deploy-test`.
 
@@ -105,7 +166,7 @@ dms_cli uninstall xapp-1-deploy-test ricxapp
 </details>
 </p>
 
-# Checking the xApp
+# Checking xApps
 
 This section explores how to check basic xApp informations. Make sure of having a running xApp in your deployment. If you uninstalled it in the previous exercise, install it again. 
 
@@ -117,7 +178,7 @@ Other important option is `-o wide`, which expands the information outputted for
 
 The namespace for components of the Near-RT RIC platform is `ricplt`, while the standard namespace for xApps is `ricxapp`. 
 
-**EXERCISE X**
+**EXERCISE 8**
 
 Check the name and IP of the pods of all running xApps.
 ```bash
@@ -139,7 +200,7 @@ kubectl -n ricxapp get pods -o wide
 
 The logs of OSC's Near-RT RIC components and xApps using OSC's xApp frameworks can be printed by using the `kubectl logs` command. It requires the pod's name (accessable using the `kubectl get pods` command) and namespace.
 
-**EXERCISE X**
+**EXERCISE 9**
 
 ```bash
 kubectl -n <NAMESPACE> logs POD/<XAPP_POD_NAME> 
@@ -164,7 +225,7 @@ When an xApp starts to run, one of its first tasks is to register to the AppMgr.
 
 The AppMgr exposes the `8080` port for HTTP communication. To obtain the AppMgr's list of registered xApps in a JSON, send an HTTP GET request to the path `/ric/v1/xapps`.
 
-**EXERCISE X**
+**EXERCISE 10**
 
 Consult the AppMgr to get the registered xApps. Remember you can use `kubectl -n ricplt get pods -o wide` to get the AppMgr's IP. 
 
@@ -191,7 +252,7 @@ Kubernetes pods expose their ports as Kubernetes services, which have their own 
 
 Checking for services can be done using the `kubectl get svc` command, which works similar to `kubectl get pods`. The namespace should be informed with `-n`, otherwise, `-A` can be used to list services from all namespaces. Extra information can also be obtained with the `-o wide` option.
 
-**EXERCISE X**
+**EXERCISE 11**
 
 Check for available services for all running xApps.
 
@@ -216,6 +277,7 @@ The obrigatory fields defined by the xApp descriptor in the config-file are:
 - `"name"`: the xApp name
 - `"version"`: the xApp version
 - `"containers"`: the list of containers of the xApp pod
+- `"messaging"`: the ports of the xApp containers and what messages they may send/receive
 
 Each element in the `containers` array must have at least:
 - `"name"`: the name of the container used for reference in the config-file
@@ -226,8 +288,13 @@ The `"image"` is defined by 3 fields:
 - `"name"`: the image name
 - `"tag"`: the image tag (its version)
 
+The obrigatory field in the `"messaging"` section is `"ports"`, which containts an array of of objects. Each object has:
+- `"name"`: the port name, used for naming the xApp service
+- `"container"`: the name of the container (defined in the `"containers"` section) which will open the port
+- `"port"`: the number of the port that will be open
+- `"description"`: a description of the port
 
-**EXERCISE X**
+**EXERCISE 12**
 
 Edit the `config-file.json` to change the xApp's name and version. The version must be three numbers separated by a `.`, otherwise the config-file won't pass dms_cli validation.  Onboard the xApp again and check if anything changed in the xApp charts list (using the `dms_cli`).
 
@@ -255,7 +322,7 @@ dms_cli get_charts_list
 </details>
 </p>
 
-**EXERCISE X**
+**EXERCISE 13**
 
 Re-install the xApp with the new configuration and check if there is any changes in the xApp pod and services.
 
@@ -286,7 +353,7 @@ Besides `"name"`, `"version"`, and `"containers"`, the `"messaging"` section is 
 
 For the xApp to be installed, it is required to specify at least one RMR port. In our example, only the RMR data port (for RMR messages) is open, at port 4560. 
 
-**EXERCISE X**
+**EXERCISE 14**
 
 Check the available open ports of the xApp.
 
@@ -303,7 +370,7 @@ There is only one service, which refers to the RMR data port (4560).
 </details>
 </p>
 
-**EXERCISE X**
+**EXERCISE 15**
 
 Edit the `config-file.json` as described below:
 - Add a port with name "http" at port 8080
@@ -365,12 +432,12 @@ There should be three services:
 
 ### RMR data port
 
-The `rmrdata` port can have some special additional fields in the config-file:
+The `rmrdata` port may define additional fields in the config-file:
 - `"txMessages"`: contains an array of strings, each one being a type of message that the xApp may transmit via RMR
 - `"rxMessages"`: contains an array of strings, each one being a type of message that the xApp may receive via RMR
 - `"policies"`: contains an array of integers, each one being a policy that the xApp can receive via the A1 interface
 
-**EXERCISE X**
+**EXERCISE 16**
 
 Add the fields described above to the `rmrdata` port in the config-file to specify the messages and policies below:
 - Transmitted message types: `RIC_SUB_REQ` and `RIC_SUB_DEL_REQ`
@@ -397,4 +464,3 @@ Assuming the xApp container is named `xapp1deploytestcontainer` in the descripto
 
 </details>
 </p>
-
