@@ -6,13 +6,17 @@ At the end of this class, you should be able to:
 - Check registered xApps in the Application Manager
 - Manage the main aspects of an xApp descriptor (config-file)
 
-All exercises in this class refer to the `xapp-1-deploy-test` xApp, located in `xapp-workshop/exercise-xapps/xapp-1-deploy-test` folder. It is highly advisable to change to the xApp directory as every command assumes that it is the actual directory.
+All exercises in this class refer to the `xapp1deploytest` xApp, located in `xapp-workshop/exercise-xapps/xapp-1-deploy-test` folder. It is highly advisable to change to the xApp directory as every command assumes that it is the actual directory.
 
 # Managing the xApp lifecycle
 
 In OSC's Near-RT RIC Kubernetes cluster, every xApp is installed as a pod, which contains one or more Docker containers, and a set of services, which addresses the pod's open ports. The information necessary to construct the xApp's pod and services is written in the xApp descriptor, commonly known as **config-file**. An optional **schema** file may accompany the config-file to validate its control section syntax. Both are `.json` files that can be found inside the `init/` directory.
 
 OSC provides a command line tool that facilitates the xApp management: the **dms_cli**.
+
+The figure below summarizes the process of deploying an xApp in OSC's platform using the **dms_cli**.
+
+![xApp deployment](/figs/workshop_xapp_deployment_workflow.png)
 
 ## Onboarding
 
@@ -22,7 +26,7 @@ Given the **config-file** and **schema** JSONs, the **dms_cli** can onboard the 
 
 ------------------------------------------------------------------------ **EXERCISE 1** ------------------------------------------------------------------------
 
-Onboard the `xapp-1-deploy-test` xApp.
+Onboard the `xapp1deploytest` xApp.
 
 ```bash
 dms_cli onboard <CONFIG_FILE_PATH> <SCHEMA_PATH>
@@ -122,7 +126,7 @@ The identification for an xApp Helm chart is a **name** and a **version**, both 
 
 ------------------------------------------------------------------------ **EXERCISE 6** ------------------------------------------------------------------------
 
-Install the onboarded `xapp-1-deploy-test` xApp.
+Install the onboarded `xapp1deploytest` xApp.
 
 ```bash
 dms_cli install <XAPP_NAME> <XAPP_VERSION> <NAMESPACE>
@@ -133,7 +137,7 @@ dms_cli install <XAPP_NAME> <XAPP_VERSION> <NAMESPACE>
 <summary>Solution</summary>
 
 ```bash
-dms_cli install xapp-1-deploy-test 1.0.0 ricxapp
+dms_cli install xapp1deploytest 1.0.0 ricxapp
 ```
 
 </details>
@@ -149,7 +153,7 @@ The dms_cli also has `upgrade` and `rollback` commands to deal with xApp version
 
 ------------------------------------------------------------------------ **EXERCISE 7** ------------------------------------------------------------------------
 
-Uninstall the `xapp-1-deploy-test`.
+Uninstall the `xapp1deploytest`.
 
 ```bash
 dms_cli uninstall <XAPP_NAME> <NAMESPACE>
@@ -160,7 +164,7 @@ dms_cli uninstall <XAPP_NAME> <NAMESPACE>
 <summary>Solution</summary>
 
 ```bash
-dms_cli uninstall xapp-1-deploy-test ricxapp
+dms_cli uninstall xapp1deploytest ricxapp
 ```
 
 </details>
@@ -168,7 +172,13 @@ dms_cli uninstall xapp-1-deploy-test ricxapp
 
 # Checking xApps
 
-This section explores how to check basic xApp information. Make sure to have a running xApp in your deployment. If you uninstalled it in the previous exercise, install it again. 
+This section explores how to check basic xApp information. Two of these informations are the xApp logs and if the xApp is registered in the AppMgr. The figure below illustrates how the `xapp1deploytest` operates, which may help understanding its logs and registration.
+
+![xapp1deploytest](/figs/workshop_xapp_deploy_test.png)
+
+Make sure to have the `xapp1deploytest` xApp running. If you uninstalled it in the previous exercise, install it again.
+
+The figure below 
 
 ## Pods
 
