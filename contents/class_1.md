@@ -6,7 +6,7 @@ At the end of this class, you should be able to:
 - Check registered xApps in the Application Manager
 - Manage the main aspects of an xApp descriptor (config-file)
 
-All exercises in this class refer to the `xapp1deploytest` xApp, located in `xapp-workshop/exercise-xapps/xapp-1-deploy-test` folder. It is highly advisable to change to the xApp directory as every command assumes that it is the actual directory.
+All exercises in this class refer to the `xapp1deploytest` xApp, located in `xapp-workshop/exercise-xapps/xapp-1-deploy-test` folder. It is highly advisable to change the current directory to the xApp directory as every command assumes that it is the actual directory.
 
 # Managing the xApp lifecycle
 
@@ -37,7 +37,7 @@ dms_cli onboard <CONFIG_FILE_PATH> <SCHEMA_PATH>
 <summary>Solution</summary>
 
 ```bash
-dms_cli onboard init/config-file.json init/schema-file.json
+dms_cli onboard init/config-file.json init/schema.json
 ```
 
 </details>
@@ -223,7 +223,7 @@ kubectl -n <NAMESPACE> logs <XAPP_POD_NAME>
 This is a generic solution to look for the pod's name and use it for logging.
 
 ```bash
-kubectl -n ricxapp logs $(kubectl get pods -n ricxapp | grep xapp1deploytest | awk '{print $1}')> 
+kubectl -n ricxapp logs $(kubectl get pods -n ricxapp | grep xapp1deploytest | awk '{print $1}')
 ```
 
 </details>
@@ -237,10 +237,10 @@ The AppMgr exposes the `8080` port for HTTP communication. To obtain the AppMgr'
 
 ------------------------------------------------------------------------ **EXERCISE 10** -----------------------------------------------------------------------
 
-Consult the AppMgr to get the registered xApps. Remember you can use `kubectl -n ricplt get pods -o wide` to get the AppMgr's IP. 
+Consult the AppMgr to get the registered xApps. Remember you can use `kubectl -n ricplt get pods -o wide` to get the AppMgr's IP. The `json_pp` command is for making the received JSON readable.
 
 ```bash
-curl -X GET http://<APPMGR_IP>:8080/ric/v1/xapps
+curl -X GET http://<APPMGR_IP>:8080/ric/v1/xapps | json_pp
 ```
 
 <p>
@@ -250,7 +250,7 @@ curl -X GET http://<APPMGR_IP>:8080/ric/v1/xapps
 This is a generic solution that looks for the AppMgr's IP and sends the HTTP GET request to it.
 
 ```bash
-curl -X GET http://$(kubectl get pods -n ricplt -o wide | grep appmgr | awk '{print $6}'):8080/ric/v1/xapps
+curl -X GET http://$(kubectl get pods -n ricplt -o wide | grep appmgr | awk '{print $6}'):8080/ric/v1/xapps | json_pp
 ```
 
 </details>
@@ -461,6 +461,7 @@ Add the fields described above to the `rmrdata` port in the config-file to speci
 Assuming the xApp container is named `xapp1deploytestcontainer` in the descriptor, this should be the config-file after the modifications:
 
 ```json
+...
 {
     "name": "rmrdata",
     "container": "xapp1deploytestcontainer",
@@ -470,6 +471,7 @@ Assuming the xApp container is named `xapp1deploytestcontainer` in the descripto
     "policies": [1],
     "description": "rmr data port"
 }
+...
 ```
 
 </details>

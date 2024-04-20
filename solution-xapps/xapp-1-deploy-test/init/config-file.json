@@ -33,6 +33,12 @@
                 "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ"],
                 "policies": [1],
                 "description": "rmr data port"
+            },
+            {
+                "name": "myport",
+                "container":"xapp1deploytestcontainer",
+                "port": 12345,
+                "description": "a port"
             }
         ]
     }
