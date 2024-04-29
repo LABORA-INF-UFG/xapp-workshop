@@ -1,0 +1,24 @@
+{
+    "name": "xapp2logsdlrest",
+    "version": "1.0.0",
+    "containers": [
+        {
+            "name": "xapp2logsdlrestcontainer",
+            "image": {
+                "registry": "127.0.0.1:5001",
+                "name": "xapp2logsdlrest",
+                "tag": "1.0.0"
+            }
+        }
+    ],
+    "messaging": {
+        "ports": [
+            {
+                "name": "rmrdata",
+                "container": "xapp2logsdlrestcontainer",
+                "port": 4560,
+                "description": "rmr data port"
+            }
+        ]
+    }
+}
