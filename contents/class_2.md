@@ -53,7 +53,43 @@ The `_BaseXapp` class defines some important functions that will be executed in 
 
 ## Xapp class
 
+The `Xapp` class is instatiable and represents a general use xApp, adding basically nothing to its parent `_BaseXapp` class.
+When instantiated, the `Xapp` requires an `entrypoint`: a function that will be called when the `run` method is executed.
+Also, no `post_init` procedure can be executed for the `Xapp` class, since it is not present as an `__init__` parameter.
+The only two `Xapp` functions, besides the ones inherited from `_BaseXapp` are:
+- `__init__`: calls `_BaseXapp` initializer, then sets up the given `entrypoint` function
+- `run`: calls the stored `entrypoint`
+
 ## RMRXapp class
+
+The `RMRXapp` class is instantiable and represents a reactive xApp, restricting its behaviour to executing handlers for two events: incoming RMR messages and config-file changes.
+When running an `RMRXapp`, it loops polling for RMR messages and config-file changes while the flag `_keep_going` is `True`.
+This flag is only set as `False` during the xApp termination, by calling the `stop` method.
+
+As the RMRXapp only reacts to config-file changes and RMR messages , there are special handlers for both.
+First, when the `RMRXapp` loop detects a change in the config-file via `inotify`, it calls `config_handler(data)`, passing the deserialized config-file JSON as `data`.
+If no `config_handler` is passed in the `RMRXapp` instantiation, it generates a default one that simply logs "xapp_frame: default config handler invoked".
+For handling RMR messages, a `_dispatch` variable contains a dictionary storing entries in the format of `RMR_MESSAGE_TYPE: handler_function`.
+When the `RMRXapp` loop detects a received RMR message, it gets the message type (a number) and triggers the respective handler registered in `_dispatch`.
+If no handler is registered for the message type, the `default_handler` is called.
+The `default_handler` is obligatorilly passed in the `RMRXapp` initialization.
+Every handler, including the `default_handler`, must have the format of 
+A handler for RMR messages must have the format of `handler(summary, sbuf)` to be called by the `RMRXapp` loop, passing `sbuf` as the pointer to the RMR message buffer and `summary` as a dictionary for the RMR message data and metadata.
+
+The `RMRXapp` class `__init__` function calls the `_BaseXapp` initializer, then it:
+- Sets up the given `default_handler` and `config_handler`
+- Creates `_dispatch` as an empty dictionary
+- Sets the flag `_keep_going` as `True`
+- Registers a handler to respond RMR health check requisitions by checking if the RMR and SDL are working
+- If no `config_handler` is provided, sets up a handler that logs a "xapp_frame: default config handler invoked"
+- Calls the config-handler at the end of initialization
+
+The other `RMRXapp` methods are: 
+- `register_callback`: registers a handler in the format of `handler(summary, sbuf)` to the given RMR message type (a number), overwriting any other handler for that message type
+- `run`: starts the `RMRXapp` loop (in threaded mode if the `thread` parameter is set as `True`) that repeats while `_keep_going` is `True`
+- `stop`: calls the `_BaseXapp` `stop` method, then sets `_keep_going` as `False`
+
+# Logging with `mdclogpy`
 
 # Interacting with the SDL
 
