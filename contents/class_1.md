@@ -407,7 +407,7 @@ Assuming the xApp container is named `xapp1deploytestcontainer` in the descripto
     {
         "name": "rmrroute",
         "container": "xapp1deploytestcontainer",
-        "port": 4560,
+        "port": 4561,
         "description": "rmr route port for routes from RtMgr"
     },
     {
