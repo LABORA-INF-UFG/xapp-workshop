@@ -474,6 +474,8 @@ Add the fields described above to the `rmrdata` port in the config-file to speci
 - Received message types: `RIC_SUB_RESP`, `RIC_INDICATION`, and `RIC_SUB_DEL_RESP`
 - A1 policies: `1`
 
+Then, reinstall the xApp and check for registered xApp at AppMgr. The fields above should be in the output for the xApp.
+
 <p>
 <details>
 <summary>Solution</summary>
