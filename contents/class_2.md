@@ -89,7 +89,81 @@ The other `RMRXapp` methods are:
 - `run`: starts the `RMRXapp` loop (in threaded mode if the `thread` parameter is set as `True`) that repeats while `_keep_going` is `True`
 - `stop`: calls the `_BaseXapp` `stop` method, then sets `_keep_going` as `False`
 
+## Custom xApp class
+
+We define the logic of our xApp into a custom xApp class.
+It does not need to inherit from any other class.
+In our example xApp `xapp2logsdlrest`, the `src/main.py` launches the xApp by instantiating the `XappLogSdlRest` class and executing its `start` method.
+The class itself is written in `src/custom_xapp.py`.
+It is not a reactive xApp, since it just loops every second logging a message.
+Therefore, `Xapp` is used as the xApp class from the framework.
+
+When we instantiate `XappLogSdlRest`, it sets up an independent logger, different from the `Xapp` instance logger, which is called by the inner framework functions.
+Then, we instantiate `Xapp` passing our `_entrypoint` function as a parameter.
+The `Xapp` instantiation process already register the xApp on AppMgr and catches the config-file data.
+After this, we use the `signal` library to register `_handle_signal` as a handler function to be called when `SIGTERM`, `SIGQUIT`, or `SIGINT` are received.
+Those signals can be sent by Kubernetes to the pod to indicate that it must start a termination routine.
+When we uninstall an xApp via `dms_cli uninstall`, the xApp pod enters the `Terminating` state and a `SIGTERM` signal is received.
+One important aspect of signal handling is that it can only be called if the xApp is executing in threaded mode.
+Otherwise, the handler will not be called.
+Lastly, we set some flags to control the xApp execution.
+
+Besides `__init__`, the `XappLogSdlRest` has five functions:
+- `_entrypoint`: contains the xApp logic that will be executed when the `Xapp` class `run` method is called
+- `_loop`: called by `_entrypoint` to logs how many loops it did while the `_shutdown` flag is `False`
+- `start`: called by the `src/main.py` to start the xApp execution by running the `Xapp` class `run` method
+- `stop`: sets the `_shutdown` flag to `True` to interrupt the `_loop` and calls the `Xapp` class `stop` method
+- `_handle_signal`: execute the `stop` function when `SIGTERM`, `SIGQUIT`, or `SIGINT` are received
+
 # Logging with `mdclogpy`
+
+OSC provides a logging library called `mdclogpy`.
+To log messages, we instantiate a `Logger` object and call its `debug`, `info`, `warning`, or `error` methods.
+Each method represents a message logging level, following the hierarchy: DEBUG < INFO < WARNING < ERROR.
+We set the log level with `set_level`.
+
+For example:
+
+```python
+from mdclogpy import Logger, Level
+logger = Logger()
+logger.set_level(Level.INFO)
+logger.error("This is a log at the ERROR level")
+logger.warning("This is a log at the WARNING level")
+logger.info("This is a log at the INFO level")
+logger.debug("This is a log at the DEBUG level")
+```
+
+The code above will log the ERROR, WARNING, and INFO messages, but not the DEBUG one, because the logging level is set as INFO.
+When instantiating the logger, the log level can be passed as a parameter.
+
+A log message is a JSON with the fields:
+- `"ts"`: the timestamp of the log in Unix time
+- `"crit"`: the log level of severity
+- `"id"`: the logger name
+- `"mdc"`: an object containing all existing key-value pairs of Mapped Diagnostic Context (MDC), e.g. the pod and service name
+- `"msg"`: the message logged
+
+Although the `mdclogpy` has functions to fully customize the MDC, it also provides a `get_env_params_values` method to generate an MDC with the process ID and the values of the environmental variables `SYSTEM_NAME`, `HOST_NAME`, `SERVICE_NAME`, `CONTAINER_NAME`, and `POD_NAME`.
+
+The code below exemplifies the main aspects of the `mdclogpy` logger:  
+
+```python
+from mdclogpy import Logger, Level
+logger = Logger(name="xapp_name", level=Level.WARNING)
+logger.get_env_params_values()
+logger.error("This is a log at the ERROR level")
+logger.warning("This is a log at the WARNING level")
+logger.info("This is a log at the INFO level")
+logger.debug("This is a log at the DEBUG level")
+```
+
+Executing the code above without setting the environmental variables consulted by `get_env_params_values` will generate logs similar to:
+
+```json
+{"ts": 1714634514940, "crit": "ERROR", "id": "xapp_name", "mdc": {"SYSTEM_NAME": "", "HOST_NAME": "", "SERVICE_NAME": "", "CONTAINER_NAME": "", "POD_NAME": "", "PID": 3145453}, "msg": "This is a log at the ERROR level"}
+{"ts": 1714634546562, "crit": "WARNING", "id": "xapp_name", "mdc": {"SYSTEM_NAME": "", "HOST_NAME": "", "SERVICE_NAME": "", "CONTAINER_NAME": "", "POD_NAME": "", "PID": 3145453}, "msg": "This is a log at the WARNING level"}
+```
 
 # Interacting with the SDL
 
