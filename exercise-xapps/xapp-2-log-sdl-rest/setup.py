@@ -24,7 +24,7 @@ def read(fname):
 
 
 setup(
-    name='xapplogsdlrest',
+    name='xapp2logsdlrest',
     version='0.0.1',
     packages=find_packages(),
     url='https://github.com/LABORA-INF-UFG/xapp-workshop/',

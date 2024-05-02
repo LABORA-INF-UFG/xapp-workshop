@@ -14,9 +14,24 @@
     "messaging": {
         "ports": [
             {
+                "name": "http",
+                "container": "xapp2logsdlrestcontainer",
+                "port": 8080,
+                "description": "http service"
+            },
+            {
+                "name": "rmrroute",
+                "container": "xapp2logsdlrestcontainer",
+                "port": 4561,
+                "description": "rmr route port for bouncer xapp"
+            },
+            {
                 "name": "rmrdata",
                 "container": "xapp2logsdlrestcontainer",
                 "port": 4560,
+                "rxMessages": ["RIC_SUB_RESP", "RIC_INDICATION","RIC_SUB_DEL_RESP"],
+                "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ"],
+                "policies": [1],
                 "description": "rmr data port"
             }
         ]
