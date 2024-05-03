@@ -24,7 +24,7 @@ class XappLogSdlRest:
         
         # Initializing a logger for the custom xApp instance in Debug level (logs everything)
         self.logger = Logger(name="XappLogSdlRest", level=Level.DEBUG) # The name is included in each log entry, Levels: DEBUG < INFO < WARNING < ERROR
-        self.logger.get_env_params_values() # Getting the MDC key-value pairs from the environment
+        #self.logger.get_env_params_values() # Getting the MDC key-value pairs from the environment
         self.logger.info("Initializing the xApp.")
 
         # Instatiating the xApp framework object 
