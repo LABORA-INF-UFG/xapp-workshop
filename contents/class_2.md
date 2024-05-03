@@ -117,7 +117,7 @@ Besides `__init__`, the `XappLogSdlRest` has five functions:
 
 # Logging with `mdclogpy`
 
-OSC provides a logging library called `mdclogpy`.
+OSC provides a Mapped Diagnostic Context (MDC) logging library called `mdclogpy`.
 To log messages, we instantiate a `Logger` object and call its `debug`, `info`, `warning`, or `error` methods.
 Each method represents a message logging level, following the hierarchy: DEBUG < INFO < WARNING < ERROR.
 We set the log level with `set_level`.
@@ -141,12 +141,28 @@ A log message is a JSON with the fields:
 - `"ts"`: the timestamp of the log in Unix time
 - `"crit"`: the log level of severity
 - `"id"`: the logger name
-- `"mdc"`: an object containing all existing key-value pairs of Mapped Diagnostic Context (MDC), e.g. the pod and service name
+- `"mdc"`: an object containing all existing key-value pairs of the MDC (e.g. the pod and service name)
 - `"msg"`: the message logged
 
 Although the `mdclogpy` has functions to fully customize the MDC, it also provides a `get_env_params_values` method to generate an MDC with the process ID and the values of the environmental variables `SYSTEM_NAME`, `HOST_NAME`, `SERVICE_NAME`, `CONTAINER_NAME`, and `POD_NAME`.
+To make the logs visually cleaner while streaming the instructor screen in this workshop, the example xApps do not generate MDCs.
 
-The code below exemplifies the main aspects of the `mdclogpy` logger:  
+------------------------------------------------------------------------ **EXERCISE 1** ------------------------------------------------------------------------
+
+Open a Python3 terminal (use the `python3` command) and:
+- Instantiate a logger with name `logger_test` at the `WARNING` level
+- Get the environment parameter values
+- Log an `ERROR` message
+- Log a `WARNING` message
+- Log a `INFO` message
+- Change the log level to `DEBUG`
+- Log a `DEBUG` message
+
+<p>
+<details>
+<summary>Solution</summary>
+
+Inside the Python terminal, execute:
 
 ```python
 from mdclogpy import Logger, Level
@@ -155,24 +171,170 @@ logger.get_env_params_values()
 logger.error("This is a log at the ERROR level")
 logger.warning("This is a log at the WARNING level")
 logger.info("This is a log at the INFO level")
+logger.set_level(Level.DEBUG)
 logger.debug("This is a log at the DEBUG level")
 ```
 
-Executing the code above without setting the environmental variables consulted by `get_env_params_values` will generate logs similar to:
+The results should be similar to:
 
 ```json
-{"ts": 1714634514940, "crit": "ERROR", "id": "xapp_name", "mdc": {"SYSTEM_NAME": "", "HOST_NAME": "", "SERVICE_NAME": "", "CONTAINER_NAME": "", "POD_NAME": "", "PID": 3145453}, "msg": "This is a log at the ERROR level"}
-{"ts": 1714634546562, "crit": "WARNING", "id": "xapp_name", "mdc": {"SYSTEM_NAME": "", "HOST_NAME": "", "SERVICE_NAME": "", "CONTAINER_NAME": "", "POD_NAME": "", "PID": 3145453}, "msg": "This is a log at the WARNING level"}
+{"ts": 1714707977986, "crit": "ERROR", "id": "xapp_name", "mdc": {"SYSTEM_NAME": "", "HOST_NAME": "", "SERVICE_NAME": "", "CONTAINER_NAME": "", "POD_NAME": "", "PID": 347478}, "msg": "This is a log at the ERROR level"}
+{"ts": 1714707995394, "crit": "WARNING", "id": "xapp_name", "mdc": {"SYSTEM_NAME": "", "HOST_NAME": "", "SERVICE_NAME": "", "CONTAINER_NAME": "", "POD_NAME": "", "PID": 347478}, "msg": "This is a log at the WARNING level"}
+{"ts": 1714708009564, "crit": "DEBUG", "id": "xapp_name", "mdc": {"SYSTEM_NAME": "", "HOST_NAME": "", "SERVICE_NAME": "", "CONTAINER_NAME": "", "POD_NAME": "", "PID": 347478}, "msg": "This is a log at the DEBUG level"}
 ```
+
+</details>
+</p>
+
+------------------------------------------------------------------------ **EXERCISE 2** ------------------------------------------------------------------------
+
+Edit the xApp cycle to log the xApp config-file as an `INFO` message at the beginning of the `_loop` function, before the `while` block.
+The config-file is accessable as the `_config_data` attribute of the `_BaseXapp` class.
+Then, install the `xapp2logsdlrest` by running:
+
+```bash
+bash update_xapp.sh
+```
+
+This script onboards, builds, pushes, and installs the new xApp, uninstalling any previous one with the same name.
+
+To view the logs, run:
+
+```bash
+bash log_xapp.sh
+```
+
+<p>
+<details>
+<summary>Solution</summary>
+
+Edit the `_loop` function located in the `src/custom_xapp.py` file to:
+
+```python
+def _loop(self):
+    """
+    Loops logging an increasing counter each second.
+    """
+    self.logger.info("Config file:" + str(self._xapp._config_data))
+    i = 1 # How many times we looped
+    while not self._shutdown: # True since custom xApp initialization until stop() is called
+        self.logger.info("Looped {} times.".format(i))
+        i+=1
+        sleep(1) # Sleeps for 1 second
+```
+
+The config-file log should be similar to:
+
+```json
+{"ts": 1714715802163, "crit": "INFO", "id": "XappLogSdlRest", "mdc": {}, "msg": "Config file:{'name': 'xapp2logsdlrest', 'version': '1.0.0', 'containers': [{'image': {'name': 'xapp2logsdlrest', 'registry': '127.0.0.1:5001', 'tag': '1.0.0'}, 'name': 'xapp2logsdlrestcontainer'}], 'messaging': {'ports': [{'container': 'xapp2logsdlrestcontainer', 'description': 'http service', 'name': 'http', 'port': 8080}, {'container': 'xapp2logsdlrestcontainer', 'description': 'rmr route port for bouncer xapp', 'name': 'rmrroute', 'port': 4561}, {'container': 'xapp2logsdlrestcontainer', 'description': 'rmr data port', 'name': 'rmrdata', 'policies': [1], 'port': 4560, 'rxMessages': ['RIC_SUB_RESP', 'RIC_INDICATION', 'RIC_SUB_DEL_RESP'], 'txMessages': ['RIC_SUB_REQ', 'RIC_SUB_DEL_REQ']}]}}"}
+```
+
+</details>
+</p>
 
 # Interacting with the SDL
 
-Explain what is an SDL namespace
+The OSC Near-RT RIC Kubernetes cluster has a Database as a Service (DBaaS) pod running a [Redis](https://redis.io/) key-value database.
+The SDL abstracts the access to the database in a lightweight API, which is used by the `SDLWrapper` class, instantiated by the `_BaseXapp` initialization.
+When instantiating the `Xapp` or `RMRXapp` classes, the `use_fake_sdl` flag determines if an in-memory database is used, instead of accessing the DBaaS pod, thus providing a safe temporary environment for xApp testing.
 
-SDL funtions implemented in the `_BaseXapp` class:
-- `sdl_set`: 
-- `sdl_get`:
-- `sdl_find_and_get`:
-- `sdl_delete`:
+The SDL relies on two main environmental variables to connect to the DBaaS:
+- `DBAAS_SERVICE_HOST`: the service name, usually `service-ricplt-dbaas-tcp.ricplt`
+- `DBAAS_SERVICE_PORT`: the service port, usually `6379`
+
+To identify data, the SDL uses two strings: a **key** and a **SDL namespace**.
+That way, all keys used by an xApp can be grouped in same namespace, which could be the xApp name.
+By standard, the `SDLWrapper` serializes data before storing or deserializes data after retrieving it.
+If it is preferred to not serialize/deserialize data, the `usemsgpack` parameter can be set as `False` when calling SDL functions.
+
+The `_BaseXapp` provides four SDL functions that simply call the `SDLWrapper`:
+
+- `sdl_set`: stores a value for a given key and SDL namespace, overwriting any stored value
+- `sdl_get`: given the key and SDL namespace, returns the value or `None` if not found
+- `sdl_find_and_get`: given the SDL namespace and a key prefix, returns a dictionary of all key-value pairs where the key matches the prefix 
+- `sdl_delete`: given the key and SDL namespace, deletes the respective key-value pair
+
+------------------------------------------------------------------------ **EXERCISE 3** ------------------------------------------------------------------------
+
+Rewrite the entire `while` block at the `_loop` function following the directions below:
+- At the `xapp2logsdlrest` SDL namespace, maintain an `xapp-loops` key updated with the number of times the xApp looped
+- When the number of loops reaches 30, delete the `xapp-loops` key from the SDL
+- At the `xapp2logsdlrest` SDL namespace, maintain an `xapp-deletes` key updated with the number of times the `xapp-loops` was deleted
+- After updating `xapp-loops` and `xapp-deletes`, log an `INFO` message with a dictionary containing both key-value pairs
+- Sleep for 1 second after each loop
+
+Then, install the `xapp2logsdlrest` by running:
+
+```bash
+bash update_xapp.sh
+```
+
+To view the logs, run:
+
+```bash
+bash log_xapp.sh
+```
+
+Wait 30 seconds and execute `update_xapp.sh` and `log_xapp.sh` again.
+Repeat this process one more time.
+
+<p>
+<details>
+<summary>Solution</summary>
+
+Edit the `_loop` function located in the `src/custom_xapp.py` file to:
+
+```python
+def _loop(self):
+    """
+    Loops logging an increasing counter each second.
+    """
+    self.logger.info("Config file:" + str(self._xapp._config_data))
+    
+    while not self._shutdown: # True since custom xApp initialization until stop() is called
+        n_loops = self._xapp.sdl_get(namespace="xapp2logsdlrest", key="xapp-loops")
+        if n_loops is None:
+            n_loops = 0
+        n_loops += 1
+        self._xapp.sdl_set(namespace="xapp2logsdlrest", key="xapp-loops", value=n_loops)
+        if n_loops >= 30:
+            self._xapp.sdl_delete(namespace="xapp2logsdlrest", key="xapp-loops")
+            n_resets = self._xapp.sdl_get(namespace="xapp2logsdlrest", key="xapp-deletes")
+            if n_resets is None:
+                n_resets = 0
+            self._xapp.sdl_set(namespace="xapp2logsdlrest", key="xapp-deletes", value=n_resets+1)
+        self.logger.info(self._xapp.sdl_find_and_get(namespace="xapp2logsdlrest", prefix="xapp"))
+        sleep(1) # Sleeps for 1 second
+```
+
+The `sdl_find_and_get` logs should be similar to:
+
+```json
+{"ts": 1714715802165, "crit": "INFO", "id": "XappLogSdlRest", "mdc": {}, "msg": {"xapp-loops": 1}}
+{"ts": 1714715803170, "crit": "INFO", "id": "XappLogSdlRest", "mdc": {}, "msg": {"xapp-loops": 2}}
+...
+{"ts": 1714716330927, "crit": "INFO", "id": "XappLogSdlRest", "mdc": {}, "msg": {"xapp-loops": 29}}
+{"ts": 1714716331932, "crit": "INFO", "id": "XappLogSdlRest", "mdc": {}, "msg": {"xapp-deletes": 1}}
+{"ts": 1714716332936, "crit": "INFO", "id": "XappLogSdlRest", "mdc": {}, "msg": {"xapp-deletes": 1, "xapp-loops": 1}}
+{"ts": 1714716333942, "crit": "INFO", "id": "XappLogSdlRest", "mdc": {}, "msg": {"xapp-deletes": 1, "xapp-loops": 2}}
+...
+
+```
+
+</details>
+</p>
 
 # Implementing HTTP REST communication
+
+
+------------------------------------------------------------------------ **EXERCISE X** ------------------------------------------------------------------------
+
+Send HTTP requests to interesting RIC components paths 
+
+------------------------------------------------------------------------ **EXERCISE X** ------------------------------------------------------------------------
+
+Set an HTTP server to respond healthcheck and config requests
+
+**Next steps**
+
+create an xApp 3 as RMRXapp to be referred as an RMRXapp example in this class
