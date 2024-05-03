@@ -18,3 +18,5 @@ Do this by executing, in the VM terminal:
 ```bash
 pip install ricxappframe mdclogpy
 ```
+
+Also, in the Visual Studio Code extensions tab, install the [Python extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python). 
