@@ -7,6 +7,10 @@ from mdclogpy import Logger, Level
 from time import sleep
 from threading import Thread
 import signal
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+# Imports from our custom packages
+from .util.XappHttpServer import XappHttpServer
 
 class XappLogSdlRest:
     """
@@ -41,6 +45,10 @@ class XappLogSdlRest:
         # Initializing custom control variables
         self._shutdown = False # Stops the xApp loop if True
         self._thread = thread # True for executing the xApp loop as a thread
+
+        # Starting HTTP server at port 8080
+        self.http_server = XappHttpServer(self.logger, self._xapp)
+        self.http_server.start(8080)
     
     def _entrypoint(self, xapp:Xapp):
         """
@@ -50,7 +58,7 @@ class XappLogSdlRest:
         ----------
         xapp: Xapp
             This is the xApp framework object (passed by the framework).
-        """ 
+        """         
         if self._thread:
             self.logger.info("Starting xApp loop in threaded mode.")
             Thread(target=self._loop).start()
@@ -66,7 +74,7 @@ class XappLogSdlRest:
         while not self._shutdown: # True since custom xApp initialization until stop() is called
             self.logger.info("Looped {} times.".format(i))
             i+=1
-            sleep(1) # Sleeps for 1 second
+            sleep(1) # Sleeps for 1 second    
 
     def _handle_signal(self, signum: int, frame):
         """
@@ -86,5 +94,6 @@ class XappLogSdlRest:
         Terminates the xApp. Can only be called if the xApp is running in threaded mode.
         """
         self._shutdown = True
+        self.http_server.stop()
         self.logger.info("Calling framework termination to unregister the xApp from AppMgr.")
         self._xapp.stop()
