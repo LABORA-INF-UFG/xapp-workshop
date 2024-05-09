@@ -326,6 +326,79 @@ The `sdl_find_and_get` logs should be similar to:
 
 # Implementing HTTP REST communication
 
+The xApp HTTP REST communication is identical to any other application.
+The only requirement is specifying the `http` port in the config-file for the http service to be created during the xApp installation.
+
+Although the HTTP REST communication can be freely implemented by the developer, OSC's RIC platform expects the xApp to implement clients and/or servers for the below scenarios:
+- xApp registration and deregistration
+- Config-file request
+- Liveness and readiness probes
+
+## xApp registration and deregistration
+
+The Application Manager (AppMgr) is responsible for managing the xApp lifecycle.
+It accounts for running xApps by maintaining a list of registered xApps.
+For example, when the AppMgr registers or deregisters an xApp, it sends the list of all registered xApps to the Routing Manager (RtMgr), which distributes updated routes for all xApps and RIC components.
+Updating this list is done by the xApp sending registration and deregistration requests during its startup and termination, respectively.
+Both request are HTTP messages carrying a JSON with xApp data.
+Also, both are already implemented in OSC's Python xApp framework `_BaseXapp` class, so xApps written using either `Xapp` or `RMRXapp` classes do not need to re-implement them.
+
+The registration request is an HTTP POST send by the xApp to the AppMgr during the `_BaseXapp` initilization (called during `Xapp` and `RMRXapp` initializations).
+The message is sent to the AppMgr `http` service at port `8080` and path `/ric/v1/register`.
+So, as the AppMgr is deployed at the `ricplt` namespace, the full URL is: `http://service-ricplt-appmgr-http.ricplt:8080/ric/v1/register`.
+The framework constructs the JSON message as an object with the fields below:
+- `"appName"`: `HOSTNAME` environmental variable, usually set as the config-file `name` value
+- `"appInstanceName"`: `name` value from xApp's config-file
+- `"appVersion"`: `version` value from xApp's config-file
+- `"configPath"`: should be the HTTP path for requesting the xApp config-file JSON, but it is always set as empty (`""`), so the AppMgr uses the standard path `ric/v1/config`
+- `"httpEndpoint"`: the `http` service endpoint, formatted as `<HTTP_SERVICE_IP>:<HTTP_SERVICE_PORT>`
+- `"rmrEndpoint"`: the `rmrdata` (not `rmrroute`) service endpoint, formatted as `<RMR_SERVICE_IP>:<RMR_DATA_SERVICE_PORT>`
+- `"config"`: the **dumped** config file JSON, which will be **serialized again** after dumping the registration request JSON
+
+If the `config` field is not filled in, the AppMgr sends a config-file request (described in the next subsection) at the `configPath`. 
+
+The deregistration request is an HTTP POST send by the xApp to the AppMgr during the xApp termination when the `stop` method from `_BaseXapp` class is called.
+The message is sent to the AppMgr `http` service at port `8080` and path `/ric/v1/deregister`.
+So, as the AppMgr is deployed at the `ricplt` namespace, the full URL is: `http://service-ricplt-appmgr-http.ricplt:8080/ric/v1/deregister`.
+The framework constructs the JSON message as an object with the fields below:
+- `"appName"`: `HOSTNAME` environmental variable, usually set as the config-file `name` value
+- `"appInstanceName"`: `name` value from xApp's config-file
+
+Both registration and deregistration requests have a response send by the AppMgr to the xApp `http` service endpoint with path `/ric/v1/` 
+
+## Config-file request
+
+## Liveness and readiness probes
+
+Liveness and readiness probes should be configured in the config-file at the same level of `name`, `version`, `containers`, and `messaging`.
+The JSON object in the config-file must define, for both probes:
+- `"httpGet"`: an object with `"path"` and `"port"` containing strings for the HTTP path and port 
+- `"initialDelaySeconds"`: a string with the number of seconds that should be waited after the xApp installation to send the first liveness probe
+- `"periodSeconds"`: a string with the number of seconds that should be waited to resend the liveness probe
+
+Below we have examples for the config-file JSON object defining liveness and readiness probes:
+
+```json
+"livenessProbe": {
+    "httpGet": {
+        "path": "ric/v1/health/alive",
+        "port": "8080"
+    },
+    "initialDelaySeconds": "5",
+    "periodSeconds": "15"
+}
+```
+
+```json
+"readinessProbe": {
+    "httpGet": {
+        "path": "ric/v1/health/alive",
+        "port": "8080"
+    },
+    "initialDelaySeconds": "5",
+    "periodSeconds": "15"
+}
+```
 
 ------------------------------------------------------------------------ **EXERCISE X** ------------------------------------------------------------------------
 
