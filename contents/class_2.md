@@ -326,13 +326,71 @@ The `sdl_find_and_get` logs should be similar to:
 
 # Implementing HTTP REST communication
 
-The xApp HTTP REST communication is identical to any other application.
+OSC's Python xApp framework provides, as part of `ricxappframe`, an `xapp_rest` library that implements an HTTP server for REST communication.
+It is based in the Python `http.server` library and assumes that the server must run as a thread.
 The only requirement is specifying the `http` port in the config-file for the http service to be created during the xApp installation.
 
-Although the HTTP REST communication can be freely implemented by the developer, OSC's RIC platform expects the xApp to implement clients and/or servers for the below scenarios:
-- xApp registration and deregistration
-- Config-file request
-- Liveness and readiness probes
+To create the HTTP server, a listening addres must be informed.
+For example, an HTTP server that listen to any host at the defaut HTTP port must use the addres `("0.0.0.0", 8080)`.
+Then, we register handlers to be called when an HTTP message is received.
+Every handler registry must have a unique name used as identifier, an HTTP method (only `GET`, `POST`, and `DELETE` are accepted), a URI path, and a callback function.
+
+The handler callback function must have four parameters, in this exact order:
+- 
+-
+-
+-
+
+
+How to create server
+
+How to write handlers
+
+How to register handlers
+
+How to start and stop server
+
+How to make HTTP requests
+
+
+
+------------------------------------------------------------------------ **EXERCISE X** ------------------------------------------------------------------------
+
+Modify the xApp `entrypoint` function to get and log the list of registered xApps from the AppMgr.
+To do this, you must send an HTTP GET to the AppMgr HTTP service (at port 8080) with URI path `/ric/v1/xapps`.
+
+TODO: solution
+
+<p>
+<details>
+<summary>Solution</summary>
+
+TODO
+
+</details>
+</p>
+
+------------------------------------------------------------------------ **EXERCISE X** ------------------------------------------------------------------------
+
+Write a handler for HTTP POST messages at URI path `ric/v1/reset_count` with payload `{"xapp-deletes": X}`, where `X` must be an integer.
+The handler must log the received message and store the `xapp-deletes` value in the SDL at key `xapp-deletes` and SDL namespace `xapp2logsdlrest`.
+Then, check the xApp logs for the changes in the `xapp-deletes` value.
+
+TODO: solution
+
+<p>
+<details>
+<summary>Solution</summary>
+
+TODO
+
+</details>
+</p>
+
+The rest of this section covers the main HTTP REST interactions of an xApp. They are:
+- Sending xApp registration and deregistration requests
+- Handling config-file requests
+- Handling Kubernetes liveness and readiness probes
 
 ## xApp registration and deregistration
 
@@ -355,26 +413,117 @@ The framework constructs the JSON message as an object with the fields below:
 - `"rmrEndpoint"`: the `rmrdata` (not `rmrroute`) service endpoint, formatted as `<RMR_SERVICE_IP>:<RMR_DATA_SERVICE_PORT>`
 - `"config"`: the **dumped** config file JSON, which will be **serialized again** after dumping the registration request JSON
 
-If the `config` field is not filled in, the AppMgr sends a config-file request (described in the next subsection) at the `configPath`. 
+If the `config` field is not filled in, the AppMgr sends a config-file request (described in the next subsection) at the `configPath` URI path.
 
 The deregistration request is an HTTP POST send by the xApp to the AppMgr during the xApp termination when the `stop` method from `_BaseXapp` class is called.
 The message is sent to the AppMgr `http` service at port `8080` and path `/ric/v1/deregister`.
 So, as the AppMgr is deployed at the `ricplt` namespace, the full URL is: `http://service-ricplt-appmgr-http.ricplt:8080/ric/v1/deregister`.
-The framework constructs the JSON message as an object with the fields below:
+The framework constructs the JSON message with the fields:
 - `"appName"`: `HOSTNAME` environmental variable, usually set as the config-file `name` value
 - `"appInstanceName"`: `name` value from xApp's config-file
 
-Both registration and deregistration requests have a response send by the AppMgr to the xApp `http` service endpoint with path `/ric/v1/` 
+## Config-file requests
 
-## Config-file request
+TODO: explain the config-file request
+
+------------------------------------------------------------------------ **EXERCISE X** ------------------------------------------------------------------------
+Check the config-file of the `xapp2logsdlrest` xApp using the `curl` command.
+By default, the `curl` command sends an HTTP GET if no HTTP method is specified.
+
+<p>
+<details>
+<summary>Solution</summary>
+
+We send an HTTP GET to the `xapp2logsdlrest` HTTP service (at port 8080) for the URI paths `/ric/v1/health/alive` and `/ric/v1/health/ready`.
+The command below automates the `kubectl get svc` command to consult the xApp service's IP.
+The `jq` receives the config-file JSON in a single line and outputs it with line breaks and indentation.
+
+```bash
+curl $(kubectl get svc -n ricxapp -o wide | grep xapp2logsdlrest-http | awk '{print $3}'):8080/ric/v1/config || jq
+```
+
+The ouput should be:
+
+```json
+{
+    "containers" : [
+        {
+            "image" : {
+                "name" : "xapp2logsdlrest",
+                "registry" : "127.0.0.1:5001",
+                "tag" : "1.0.0"
+            },
+            "name" : "xapp2logsdlrestcontainer"
+        }
+    ],
+    "livenessProbe" : {
+        "httpGet" : {
+            "path" : "ric/v1/health/alive",
+            "port" : 8080
+        },
+        "initialDelaySeconds" : 5,
+        "periodSeconds" : 15
+    },
+    "messaging" : {
+        "ports" : [
+            {
+                "container" : "xapp2logsdlrestcontainer",
+                "description" : "http service",
+                "name" : "http",
+                "port" : 8080
+            },
+            {
+                "container" : "xapp2logsdlrestcontainer",
+                "description" : "rmr route port for bouncer xapp",
+                "name" : "rmrroute",
+                "port" : 4561
+            },
+            {
+                "container" : "xapp2logsdlrestcontainer",
+                "description" : "rmr data port",
+                "name" : "rmrdata",
+                "policies" : [
+                    1
+                ],
+                "port" : 4560,
+                "rxMessages" : [
+                    "RIC_SUB_RESP",
+                    "RIC_INDICATION",
+                    "RIC_SUB_DEL_RESP"
+                ],
+                "txMessages" : [
+                    "RIC_SUB_REQ",
+                    "RIC_SUB_DEL_REQ"
+                ]
+            }
+        ]
+    },
+    "name" : "xapp2logsdlrest",
+    "readinessProbe" : {
+        "httpGet" : {
+            "path" : "ric/v1/health/ready",
+            "port" : 8080
+        },
+        "initialDelaySeconds" : 5,
+        "periodSeconds" : 15
+    },
+    "version" : "1.0.0"
+}
+```
+
+</details>
+</p>
 
 ## Liveness and readiness probes
 
-Liveness and readiness probes should be configured in the config-file at the same level of `name`, `version`, `containers`, and `messaging`.
-The JSON object in the config-file must define, for both probes:
-- `"httpGet"`: an object with `"path"` and `"port"` containing strings for the HTTP path and port 
-- `"initialDelaySeconds"`: a string with the number of seconds that should be waited after the xApp installation to send the first liveness probe
-- `"periodSeconds"`: a string with the number of seconds that should be waited to resend the liveness probe
+Kubernetes uses HTTP GET messages to check the pod health acording to the pod logic.
+Those messages are called probes.
+The liveness probe is used to check if the pod is healthy, while the readiness probe checks if the pod is ready to start. 
+Both liveness and readiness probes should be configured in the config-file (as objects at the same level of `name`, `version`, `containers`, and `messaging`).
+The JSON object in the config-file must define, for the two probes:
+- `"httpGet"`: an object with `"path"` and `"port"` containing a string for the URI path and an integer for the HTTP port, respectively 
+- `"initialDelaySeconds"`: an integer with the number of seconds that should be waited after the xApp installation to send the first liveness probe
+- `"periodSeconds"`: an integer with the number of seconds that should be waited to resend the liveness probe
 
 Below we have examples for the config-file JSON object defining liveness and readiness probes:
 
@@ -382,32 +531,51 @@ Below we have examples for the config-file JSON object defining liveness and rea
 "livenessProbe": {
     "httpGet": {
         "path": "ric/v1/health/alive",
-        "port": "8080"
+        "port": 8080
     },
-    "initialDelaySeconds": "5",
-    "periodSeconds": "15"
+    "initialDelaySeconds": 5,
+    "periodSeconds": 15
 }
 ```
 
 ```json
 "readinessProbe": {
     "httpGet": {
-        "path": "ric/v1/health/alive",
-        "port": "8080"
+        "path": "ric/v1/health/ready",
+        "port": 8080
     },
-    "initialDelaySeconds": "5",
-    "periodSeconds": "15"
+    "initialDelaySeconds": 5,
+    "periodSeconds": 15
 }
 ```
 
 ------------------------------------------------------------------------ **EXERCISE X** ------------------------------------------------------------------------
+Check the readiness and liveness of the `xapp2logsdlrest` xApp using the `curl` command.
+By default, the `curl` command sends an HTTP GET if no HTTP method is specified.
 
-Send HTTP requests to interesting RIC components paths 
+<p>
+<details>
+<summary>Solution</summary>
 
------------------------------------------------------------------------- **EXERCISE X** ------------------------------------------------------------------------
+We send an HTTP GET to the `xapp2logsdlrest` HTTP service (at port 8080) for the URI paths `/ric/v1/health/alive` and `/ric/v1/health/ready`.
+The commands below automate the `kubectl get svc` command to consult the xApp service's IP.
 
-Set an HTTP server to respond healthcheck and config requests
+```bash
+curl $(kubectl get svc -n ricxapp -o wide | grep xapp2logsdlrest-http | awk '{print $3}'):8080/ric/v1/health/alive
+curl $(kubectl get svc -n ricxapp -o wide | grep xapp2logsdlrest-http | awk '{print $3}'):8080/ric/v1/health/ready
+```
 
-**Next steps**
+The ouput should be:
 
-create an xApp 3 as RMRXapp to be referred as an RMRXapp example in this class
+```json
+{"status": "Healthy"}
+{"status": "Ready"}
+```
+
+</details>
+</p>
+
+
+**TODO**
+
+Create an xApp 3 as RMRXapp to be referred as an RMRXapp example in this class
