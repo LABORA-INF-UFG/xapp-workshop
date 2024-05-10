@@ -35,5 +35,21 @@
                 "description": "rmr data port"
             }
         ]
+    },
+    "readinessProbe": {
+        "httpGet": {
+            "path": "ric/v1/health/ready",
+            "port": 8080
+        },
+        "initialDelaySeconds": 5,
+        "periodSeconds": 15
+    },
+    "livenessProbe": {
+        "httpGet": {
+            "path": "ric/v1/health/alive",
+            "port": 8080
+        },
+        "initialDelaySeconds": 5,
+        "periodSeconds": 15
     }
 }

@@ -2,15 +2,14 @@
 # Imports from OSC libraries
 from ricxappframe.xapp_frame import Xapp, rmr
 from mdclogpy import Logger, Level
+from ricxappframe import xapp_rest
 
 # Imports from other libraries
 from time import sleep
 from threading import Thread
 import signal
 from http.server import BaseHTTPRequestHandler, HTTPServer
-
-# Imports from our custom packages
-from .util.XappHttpServer import XappHttpServer
+import json
 
 class XappLogSdlRest:
     """
@@ -45,10 +44,19 @@ class XappLogSdlRest:
         # Initializing custom control variables
         self._shutdown = False # Stops the xApp loop if True
         self._thread = thread # True for executing the xApp loop as a thread
+        self._ready = False # True when the xApp is ready to start
 
-        # Starting HTTP server at port 8080
-        self.http_server = XappHttpServer(self.logger, self._xapp)
-        self.http_server.start(8080)
+        # Starting a threaded HTTP server listening to any host at port 8080 
+        self.http_server = xapp_rest.ThreadedHTTPServer("0.0.0.0", 8080)
+        self.http_server.handler.add_handler(self.http_server.handler, method="GET", name="config", uri="/ric/v1/config", callback=self.config_handler)
+        self.http_server.handler.add_handler(self.http_server.handler, method="GET", name="liveness", uri="/ric/v1/health/alive", callback=self.liveness_handler)
+        self.http_server.handler.add_handler(self.http_server.handler, method="GET", name="readiness", uri="/ric/v1/health/ready", callback=self.readiness_handler)
+        self.logger.info("Starting HTTP server.")
+        self.http_server.start()  
+
+        # The xApp is ready to start now
+        self._ready = True
+        self.logger.info("xApp is ready.")
     
     def _entrypoint(self, xapp:Xapp):
         """
@@ -59,13 +67,10 @@ class XappLogSdlRest:
         xapp: Xapp
             This is the xApp framework object (passed by the framework).
         """         
-        if self._thread:
-            self.logger.info("Starting xApp loop in threaded mode.")
-            Thread(target=self._loop).start()
-        else:
-            self.logger.info("Starting xApp loop in non-threaded mode.")
-            self._loop()
-        
+        # Starting the xApp loop
+        self.logger.info("Starting xApp loop in threaded mode.")
+        Thread(target=self._loop).start()
+
     def _loop(self):
         """
         Loops logging an increasing counter each second.
@@ -83,6 +88,59 @@ class XappLogSdlRest:
         self.logger.info("Received signal {} to stop the xApp.".format(signal.Signals(signum).name))
         self.stop() # Custom xApp termination routine
     
+    def config_handler(self, name:str, path:str, data:bytes, ctype:str):
+        """
+        Handler for the HTTP GET /ric/v1/config request.
+        """
+        self.logger.info("Received GET /ric/v1/config request with content type {}.".format(ctype))
+        response = xapp_rest.initResponse(
+            status=200, # Status = 200 OK
+            response="Config data"
+        ) # Initiating HTTP response
+        response['payload'] = json.dumps(self._xapp._config_data) # Payload = the xApp config-file
+        self.logger.debug("Config handler response: {}.".format(response))
+        return response
+
+    def liveness_handler(self, name:str, path:str, data:bytes, ctype:str):
+        """
+        Handler for the HTTP GET /ric/v1/health/alive request.
+        """
+        self.logger.info("Received GET /ric/v1/health/alive request with content type {}.".format(ctype))
+        if self._xapp.healthcheck():
+            response = xapp_rest.initResponse(
+                status=200, # Status = 200 OK
+                response="Liveness"
+            ) # Initiating HTTP response
+            response['payload'] = json.dumps({"status": "Healthy"}) # Payload = status: Healthy
+        else:
+            response = xapp_rest.initResponse(
+                status=503, # Status = 503 Service Unavailable
+                response="Liveness"
+            )
+            response['payload'] = json.dumps({"status": "Unhealthy"}) # Payload = status: Unhealthy
+        self.logger.debug("Liveness handler response: {}.".format(response))
+        return response
+
+    def readiness_handler(self, name:str, path:str, data:bytes, ctype:str):
+        """
+        Handler for the HTTP GET /ric/v1/health/ready request.
+        """
+        self.logger.info("Received GET /ric/v1/health/ready request with content type {}.".format(ctype))
+        if self._ready:
+            response = xapp_rest.initResponse(
+                status=200, # Status = 200 OK
+                response="Readiness"
+            ) # Initiating HTTP response
+            response['payload'] = json.dumps({"status": "Ready"}) # Payload = status: Healthy
+        else:
+            response = xapp_rest.initResponse(
+                status=503, # Status = 503 Service Unavailable
+                response="Readiness"
+            )
+            response['payload'] = json.dumps({"status": "Not ready"})
+        self.logger.debug("Readiness handler response: {}.".format(response))
+        return response
+
     def start(self):
         """
         Starts the xApp loop.
