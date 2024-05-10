@@ -237,10 +237,12 @@ The AppMgr exposes the `8080` port for HTTP communication. To obtain the AppMgr'
 
 ------------------------------------------------------------------------ **EXERCISE 10** -----------------------------------------------------------------------
 
-Consult the AppMgr to get the registered xApps. Remember you can use `kubectl -n ricplt get pods -o wide` to get the AppMgr's IP. The `json_pp` command is for making the received JSON readable. There should be no registered xApp, since `xapp1deploytest` is incomplete and lacks an HTTP port, which is necessary to send the registration request to AppMgr.
+Consult the AppMgr to get the registered xApps. Remember you can use `kubectl -n ricplt get pods -o wide` to get the AppMgr's IP.
+The `jq` command is for making the received JSON readable.
+There should be no registered xApp, since `xapp1deploytest` is incomplete and lacks an HTTP port, which is necessary to send the registration request to AppMgr.
 
 ```bash
-curl -X GET http://<APPMGR_IP>:8080/ric/v1/xapps | json_pp
+curl -X GET http://<APPMGR_IP>:8080/ric/v1/xapps | jq
 ```
 
 <p>
@@ -250,7 +252,7 @@ curl -X GET http://<APPMGR_IP>:8080/ric/v1/xapps | json_pp
 This is a generic solution that looks for the AppMgr's IP and sends the HTTP GET request to it.
 
 ```bash
-curl -X GET http://$(kubectl get pods -n ricplt -o wide | grep appmgr | awk '{print $6}'):8080/ric/v1/xapps | json_pp
+curl -X GET http://$(kubectl get pods -n ricplt -o wide | grep appmgr | awk '{print $6}'):8080/ric/v1/xapps | jq
 ```
 
 </details>
@@ -451,7 +453,7 @@ The `rmrdata` port may define additional fields in the config-file:
 Check if the xApp is registered at the AppMgr. Now that it has an HTTP port, it should have registered correctly.
 
 ```bash
-curl -X GET http://<APPMGR_IP>:8080/ric/v1/xapps | json_pp
+curl -X GET http://<APPMGR_IP>:8080/ric/v1/xapps | jq
 ```
 
 <p>
@@ -461,7 +463,7 @@ curl -X GET http://<APPMGR_IP>:8080/ric/v1/xapps | json_pp
 This is a generic solution that looks for the AppMgr's IP and sends the HTTP GET request to it.
 
 ```bash
-curl -X GET http://$(kubectl get pods -n ricplt -o wide | grep appmgr | awk '{print $6}'):8080/ric/v1/xapps | json_pp
+curl -X GET http://$(kubectl get pods -n ricplt -o wide | grep appmgr | awk '{print $6}'):8080/ric/v1/xapps | jq
 ```
 
 </details>
