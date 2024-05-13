@@ -327,45 +327,100 @@ The `sdl_find_and_get` logs should be similar to:
 # Implementing HTTP REST communication
 
 OSC's Python xApp framework provides, as part of `ricxappframe`, an `xapp_rest` library that implements an HTTP server for REST communication.
-It is based in the Python `http.server` library and assumes that the server must run as a thread.
+It is based in the Python (http)[https://docs.python.org/3/library/http.html] package, especially the `http.server` subpackage, and assumes that the server must run as a thread.
 The only requirement is specifying the `http` port in the config-file for the http service to be created during the xApp installation.
 
 To create the HTTP server, a listening addres must be informed.
-For example, an HTTP server that listen to any host at the defaut HTTP port must use the addres `("0.0.0.0", 8080)`.
+For example, an HTTP server that listen to any host at the defaut HTTP port can be instantiated executing:
+
+```python
+http_server = xapp_rest.ThreadedHTTPServer("0.0.0.0", 8080)
+```
+
 Then, we register handlers to be called when an HTTP message is received.
-Every handler registry must have a unique name used as identifier, an HTTP method (only `GET`, `POST`, and `DELETE` are accepted), a URI path, and a callback function.
+Every handler is registered with a unique name, used as identifier, an HTTP method (only `GET`, `POST`, and `DELETE` are accepted), a URI path, and a callback function.
+Below we register a handler identified as `"my_handler"` that executes the `my_handler` function when an HTTP GET message is received in the URI path `"/ric/v1/my_path"`: 
 
-The handler callback function must have four parameters, in this exact order:
-- 
--
--
--
+```python
+http_server.handler.add_handler(http_server.handler, method="GET", name="my_handler", uri="/ric/v1/my_path", callback=my_handler)
+```
 
+To define the callback function, which is invoked by the HTTP server, it must receive four parameters (in this exact order):
+- `name`: a string with the name of the registered handler 
+- `path`: a string with the URI path of the HTTP request 
+- `data`: a bytes object with the encoded payload (need to be converted to a string using `data.decode()`)
+- `ctype`: a string with the content type of the HTTP request
 
-How to create server
+lso, the callback must return a response: a dictionary with information for the server to construct the HTTP response message and send it to the client.
+The `xapp_rest` provides a `initResponse` function to generate this dictionary.
+The `initResponse` method has two optional parameters for initiating the dictionary with some data: `status` must be an integer with the HTTP status code and `response` must be a string with the HTTP response text.
+Other informations, like a JSON payload, must be written directly on the response dictionary.
 
-How to write handlers
+For example, a simple handler callback function that responds with an `200 OK` HTTP status and a `{"my_key":"my_value"}` dictionary as payload is defined as below:
 
-How to register handlers
+```python
+def my_handler(self, name:str, path:str, data:bytes, ctype:str):
+    response = xapp_rest.initResponse(status=200, response="My_response_name")
+    response['payload'] = json.dumps({"my_key": "my_value"})
+    return response
+```
 
-How to start and stop server
+Printing the `response` dictionary will output:
 
-How to make HTTP requests
+```python
+{
+  "response": "My_response_name",
+  "status": 200,
+  "payload": "{\"my_key\": \"my_value\"}",
+  "ctype": "application/json",
+  "attachment": None,
+  "mode": "plain"
+}
+```
 
+The `"attachment"` value can contain a filename for the HTTP client to store the payload, while the `"mode"` value contains the payload mode (`plain` for UTF-8 text or `binary` for bytes object).
 
+With the HTTP server instantiated and the handlers registered, we finally run the server thread:
+
+```python
+http_server.start()
+```
+
+To stop the server (for example, during the xApp termination), we execute:
+
+```python
+self.http_server.stop()
+```
+
+Besides handling HTTP messages by running a server, we may want to send HTTP requests as well.
+For this we use the Python [requests](https://pypi.org/project/requests/) package, which simplifies this process with a single function.
+The xApp registration and deregistration, implemented in the `_BaseXapp` class, simply execute the `requests.post` method to send a JSON payload to the AppMgr as below:
+
+```python
+resp = requests.post(request_url, json=msg)
+self.logger.debug("Post to '{}' done, status : {}".format(request_url, resp.status_code))
+self.logger.debug("Response Text : {}".format(resp.text))
+```
+
+Similarly, we can send an HTTP GET request to AppMgr's HTTP service at the URI path `ric/v1/xapps` to get the list of registered xApps:
+
+```python
+resp = requests.get("http://service-ricplt-appmgr-http.ricplt:8080/ric/v1/xapps")
+self.logger.info("AppMgr responded with status {}".format(resp.status_code))
+self.logger.info("Registered xApps list: {}".format(resp.json()))
+```
 
 ------------------------------------------------------------------------ **EXERCISE X** ------------------------------------------------------------------------
 
-Modify the xApp `entrypoint` function to get and log the list of registered xApps from the AppMgr.
-To do this, you must send an HTTP GET to the AppMgr HTTP service (at port 8080) with URI path `/ric/v1/xapps`.
+Modify the xApp `entrypoint` function to get and log the list of registered xApps from the AppMgr during the xApp startup.
+To do this, you must send an HTTP GET to the AppMgr HTTP service (at port 8080) with URI path `ric/v1/xapps`.
+Tip: the full URL will be `"http://service-ricplt-appmgr-http.ricplt:8080/ric/v1/xapps"`.
 
-TODO: solution
+TODO : SOLUTION
 
 <p>
 <details>
 <summary>Solution</summary>
-
-TODO
 
 </details>
 </p>
@@ -373,10 +428,10 @@ TODO
 ------------------------------------------------------------------------ **EXERCISE X** ------------------------------------------------------------------------
 
 Write a handler for HTTP POST messages at URI path `ric/v1/reset_count` with payload `{"xapp-deletes": X}`, where `X` must be an integer.
-The handler must log the received message and store the `xapp-deletes` value in the SDL at key `xapp-deletes` and SDL namespace `xapp2logsdlrest`.
+The handler must log the received payload and store the `xapp-deletes` value in the SDL at key `xapp-deletes` and SDL namespace `xapp2logsdlrest`.
 Then, check the xApp logs for the changes in the `xapp-deletes` value.
 
-TODO: solution
+TODO: SOLUTION
 
 <p>
 <details>
@@ -387,7 +442,7 @@ TODO
 </details>
 </p>
 
-The rest of this section covers the main HTTP REST interactions of an xApp. They are:
+The rest of this section covers the main HTTP REST interactions of an xApp. All of them are already implemented in the `xapp2logsdlrest` xApp. They are:
 - Sending xApp registration and deregistration requests
 - Handling config-file requests
 - Handling Kubernetes liveness and readiness probes
@@ -402,7 +457,7 @@ Both request are HTTP messages carrying a JSON with xApp data.
 Also, both are already implemented in OSC's Python xApp framework `_BaseXapp` class, so xApps written using either `Xapp` or `RMRXapp` classes do not need to re-implement them.
 
 The registration request is an HTTP POST send by the xApp to the AppMgr during the `_BaseXapp` initilization (called during `Xapp` and `RMRXapp` initializations).
-The message is sent to the AppMgr `http` service at port `8080` and path `/ric/v1/register`.
+The message is sent to the AppMgr `http` service at port `8080` and path `ric/v1/register`.
 So, as the AppMgr is deployed at the `ricplt` namespace, the full URL is: `http://service-ricplt-appmgr-http.ricplt:8080/ric/v1/register`.
 The framework constructs the JSON message as an object with the fields below:
 - `"appName"`: `HOSTNAME` environmental variable, usually set as the config-file `name` value
@@ -416,7 +471,7 @@ The framework constructs the JSON message as an object with the fields below:
 If the `config` field is not filled in, the AppMgr sends a config-file request (described in the next subsection) at the `configPath` URI path.
 
 The deregistration request is an HTTP POST send by the xApp to the AppMgr during the xApp termination when the `stop` method from `_BaseXapp` class is called.
-The message is sent to the AppMgr `http` service at port `8080` and path `/ric/v1/deregister`.
+The message is sent to the AppMgr `http` service at port `8080` and URI path `ric/v1/deregister`.
 So, as the AppMgr is deployed at the `ricplt` namespace, the full URL is: `http://service-ricplt-appmgr-http.ricplt:8080/ric/v1/deregister`.
 The framework constructs the JSON message with the fields:
 - `"appName"`: `HOSTNAME` environmental variable, usually set as the config-file `name` value
@@ -424,7 +479,11 @@ The framework constructs the JSON message with the fields:
 
 ## Config-file requests
 
-TODO: explain the config-file request
+The main reason for config-file requests is if the AppMgr did not received the xApp config-file in the registration request.
+In this case, the AppMgr sends an HTTP GET to `htppEndpoing` at the URI path `configPath`, where `htppEndpoing` and `configPath` are indicated in the registration request.
+In case of `configPath` being empty, the AppMgr assumes `ric/v1/config` as the default path to sending the config-file request.
+
+The response sent by the xApp must have the serialized config-file JSON as payload.
 
 ------------------------------------------------------------------------ **EXERCISE X** ------------------------------------------------------------------------
 Check the config-file of the `xapp2logsdlrest` xApp using the `curl` command.
@@ -434,7 +493,7 @@ By default, the `curl` command sends an HTTP GET if no HTTP method is specified.
 <details>
 <summary>Solution</summary>
 
-We send an HTTP GET to the `xapp2logsdlrest` HTTP service (at port 8080) for the URI paths `/ric/v1/health/alive` and `/ric/v1/health/ready`.
+We send an HTTP GET to the `xapp2logsdlrest` HTTP service (at port 8080) for the URI paths `ric/v1/health/alive` and `ric/v1/health/ready`.
 The command below automates the `kubectl get svc` command to consult the xApp service's IP.
 The `jq` receives the config-file JSON in a single line and outputs it with line breaks and indentation.
 
@@ -557,7 +616,7 @@ By default, the `curl` command sends an HTTP GET if no HTTP method is specified.
 <details>
 <summary>Solution</summary>
 
-We send an HTTP GET to the `xapp2logsdlrest` HTTP service (at port 8080) for the URI paths `/ric/v1/health/alive` and `/ric/v1/health/ready`.
+We send an HTTP GET to the `xapp2logsdlrest` HTTP service (at port 8080) for the URI paths `ric/v1/health/alive` and `ric/v1/health/ready`.
 The commands below automate the `kubectl get svc` command to consult the xApp service's IP.
 
 ```bash
