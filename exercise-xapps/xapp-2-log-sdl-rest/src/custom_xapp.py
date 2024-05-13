@@ -8,8 +8,8 @@ from ricxappframe import xapp_rest
 from time import sleep
 from threading import Thread
 import signal
-from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
+import requests
 
 class XappLogSdlRest:
     """
