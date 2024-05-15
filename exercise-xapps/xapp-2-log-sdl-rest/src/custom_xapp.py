@@ -79,7 +79,7 @@ class XappLogSdlRest:
         while not self._shutdown: # True since custom xApp initialization until stop() is called
             self.logger.info("Looped {} times.".format(i))
             i+=1
-            sleep(1) # Sleeps for 1 second    
+            sleep(1) # Sleep for 1 second    
 
     def _handle_signal(self, signum: int, frame):
         """
