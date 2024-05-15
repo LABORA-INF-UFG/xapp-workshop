@@ -51,6 +51,7 @@ class XappLogSdlRest:
         self.http_server.handler.add_handler(self.http_server.handler, method="GET", name="config", uri="/ric/v1/config", callback=self.config_handler)
         self.http_server.handler.add_handler(self.http_server.handler, method="GET", name="liveness", uri="/ric/v1/health/alive", callback=self.liveness_handler)
         self.http_server.handler.add_handler(self.http_server.handler, method="GET", name="readiness", uri="/ric/v1/health/ready", callback=self.readiness_handler)
+        self.http_server.handler.add_handler(self.http_server.handler, method="POST", name="sdl_delete", uri="/ric/v1/reset_count", callback=self.sdl_delete_handler)
         self.logger.info("Starting HTTP server.")
         self.http_server.start()  
 
@@ -71,6 +72,10 @@ class XappLogSdlRest:
         # Logging the config file
         self.logger.info("Config file:" + str(self._xapp._config_data))
 
+        # Logging the list of registered xApps (got from AppMgr)
+        xapp_list = requests.get("http://service-ricplt-appmgr-http.ricplt:8080/ric/v1/xapps")
+        self.logger.info("List of registered xApps: " + str(xapp_list.json()))
+        
         # Starting the xApp loop
         self.logger.info("Starting xApp loop in threaded mode.")
         Thread(target=self._loop).start()
@@ -152,6 +157,20 @@ class XappLogSdlRest:
             )
             response['payload'] = json.dumps({"status": "Not ready"})
         self.logger.debug("Readiness handler response: {}.".format(response))
+        return response
+
+    def sdl_delete_handler(self, name:str, path:str, data:bytes, ctype:str):
+        """
+        Handler for the HTTP POST /ric/v1/reset_count request.
+        """
+        self.logger.info("Received POST /ric/v1/reset_count request with content type {}.".format(ctype))
+        data_dict = json.loads(data)
+        self.logger.debug("Received payload {}".format(data_dict))
+        self._xapp.sdl_set(namespace="xapp2logsdlrest", key="xapp-deletes", value=data_dict["xapp-deletes"])
+        response = xapp_rest.initResponse(
+            status=200, # Status = 200 OK
+            response="SDL delete"
+        )
         return response
 
     def start(self):
