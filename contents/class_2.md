@@ -36,8 +36,8 @@ def launchXapp():
 ```
 
 Every xApp in this workshop has its class implemented in the `src/custom_xapp.py` file.
-The custom xApps are written using the `ricxappframe` library, which provides an implementation of the basic behaviors of an xApp to facilitate the xApp development process.
-Inside the library files, the `ricxappframe/xapp_frame.py` contains classes that a custom xApp will use as API for interacting with the SDL, sending and receiving RIC Message Router (RMR) messages, and other basic xApp functions.
+The custom xApps are written using OSC's [ricxappframe](https://pypi.org/project/ricxappframe/) package, which provides an implementation of the basic behaviors of an xApp to facilitate the xApp development process.
+Inside the package files, the `ricxappframe/xapp_frame.py` library contains classes that a custom xApp will use as API for interacting with the SDL, sending and receiving RIC Message Router (RMR) messages, and other basic xApp functions.
 
 There are three xApp classes in the framework: `_BaseXapp`, `Xapp`, and `RMRXapp`.
 
