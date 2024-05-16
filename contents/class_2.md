@@ -43,7 +43,7 @@ There are three xApp classes in the framework: `_BaseXapp`, `Xapp`, and `RMRXapp
 
 `_BaseXapp` is an abstract class from which `Xapp` and `RMRXapp` inherit functions common to every xApp.
 
-`Xapp` is a class for general purpose xApps, which does not add anything to the already inherited `_BaseXapp` methods as it assumes the developer will implement the xApp cycle.
+`Xapp` is a class for general-purpose xApps, which does not add anything to the already inherited `_BaseXapp` methods as it assumes the developer will implement the xApp cycle.
 
 On the other side, the `RMRXapp` class implements a loop that checks for received RMR messages and config-file changes, triggering handlers registered to these events.
 Every xApp written using the `RMRXapp` class can only be reactive (i.e. acting only if some event occurs), while those written with `Xapp` can be both reactive and active (executing an entirely custom internal logic).
@@ -58,7 +58,7 @@ The `_BaseXapp` class defines some important functions common to both `Xapp` and
 
 ## Xapp class
 
-The `Xapp` class is instantiable and represents a general use xApp, adding almost no function to its parent `_BaseXapp` class.
+The `Xapp` class is instantiable and represents a general-use xApp, adding almost no function to its parent `_BaseXapp` class.
 When instantiated, the `Xapp` requires an `entrypoint`: a function that will be called when the `run` method is executed.
 Also, no `post_init` procedure can be executed for the `Xapp` class, since it is not present as an `__init__` parameter.
 The only two `Xapp` functions, besides the ones inherited from `_BaseXapp` are:
@@ -80,33 +80,33 @@ xapp.run() # Calls my_entrypoint()
 xapp.stop() # Deregisters the xApp and stops the RMR loop
 ```
 
-It is important to notice that, if `my_entrypoint` do not start the xApp loop as a thread, it blocks the `xapp.stop()` of executing.
+It is important to notice that, if `my_entrypoint` does not start the xApp loop as a thread, it blocks the `xapp.stop()` of executing.
 Therefore, it is always recommended to start the xApp loop in the entrypoint as a thread.
 
 ## RMRXapp class
 
-The `RMRXapp` class is instantiable and represents a reactive xApp, restricting its behaviour to executing handlers for two events: incoming RMR messages and config-file changes.
+The `RMRXapp` class is instantiable and represents a reactive xApp, restricting its behavior to executing handlers for two events: incoming RMR messages and config-file changes.
 Additionally, the xApp developer can implement a threaded REST server instantiated at the `post_init` function for the xApp to also react to receiving HTTP messages.
 
 When we call the `run` method of an `RMRXapp`, it starts a loop that polls for RMR messages and config-file changes while the flag `_keep_going` is `True`.
-This flag is only set as `False` during the xApp termination, when the `stop` method is called.
+This flag is only set as `False` during the xApp termination when the `stop` method is called.
 
 The `RMRXapp` works by calling handlers (or callbacks) for events of detecting config-file changes or receiving an RMR message.
 
-When the `RMRXapp` loop detects a change in the config-file (via `inotify`), it calls `config_handler(data)`, passing the a dictionary with the config-file content as `data`.
+When the `RMRXapp` loop detects a change in the config-file (via `inotify`), it calls `config_handler(data)`, passing a dictionary with the config-file content as `data`.
 If no `config_handler` is passed in the `RMRXapp` instantiation, it uses a default handler that simply logs "xapp_frame: default config handler invoked".
 
 For handling received RMR messages, a `_dispatch` variable contains a dictionary storing entries in the format of `RMR_MESSAGE_TYPE: handler_function`.
 When the `RMRXapp` loop detects a received RMR message, it gets the RMR message type (an integer) and triggers the respective handler registered in `_dispatch`.
 If no handler is registered for the message type, the `default_handler` is called.
-The `default_handler` is obligatorilly passed in the `RMRXapp` initialization.
+The `default_handler` is obligatorily passed in the `RMRXapp` initialization.
 
 The `RMRXapp` class `__init__` function calls the `_BaseXapp` initializer, then it:
 - Sets up the given `default_handler` and `config_handler`
 - Creates `_dispatch` as an empty dictionary
 - Sets the flag `_keep_going` as `True`
 - Registers a handler to respond RMR health check requisitions by checking if the RMR and SDL are working
-- If no `config_handler` is provided, sets up a handler that logs "xapp_frame: default config handler invoked"
+- If no `config_handler` is provided, set up a handler that logs "xapp_frame: default config handler invoked"
 - Calls the config-handler at the end of initialization
 
 The other `RMRXapp` methods are: 
@@ -114,7 +114,7 @@ The other `RMRXapp` methods are:
 - `run`: starts the `RMRXapp` loop (in threaded mode if the `thread` parameter is set as `True`) that repeats while `_keep_going` is `True`
 - `stop`: calls the `_BaseXapp` `stop` method, then sets `_keep_going` as `False`
 
-An example of instantiating, running and stopping an `RMRXapp`:
+An example of instantiating, running, and stopping an `RMRXapp`:
 
 ```python
 rmr_xapp = RMRXapp(
@@ -146,7 +146,7 @@ Therefore, `Xapp` is used as the xApp framework class.
 We describe the `XappLogSdlRest` initialization below:
 1. When we instantiate `XappLogSdlRest`, it sets up an independent logger, different from the `Xapp` instance logger (used by the internal framework functions).
 2. Then, we instantiate `Xapp` passing our `_entrypoint` function as a parameter.
-The `Xapp` instantiation already register the xApp on AppMgr and catches the config-file data.
+The `Xapp` instantiation already registers the xApp on AppMgr and catches the config-file data.
 3. After this, we use the `signal` library to register `_handle_signal` as a handler function to be called when `SIGTERM`, `SIGQUIT`, or `SIGINT` are received.
 4. We set some flags to control the xApp execution.
 5. An HTTP server is started to listen for any message at port `8080`
@@ -162,7 +162,7 @@ Otherwise, the handler will not be called, since the `RMRXapp` loop blocks it.
 
 Besides `__init__`, the `XappLogSdlRest` has other eight functions:
 - `_entrypoint`: contains the xApp logic that will be executed when the `Xapp` class `run` method is called
-- `_loop`: called by `_entrypoint` to logs how many loops it did while the `_shutdown` flag is `False`
+- `_loop`: called by `_entrypoint` to log how many loops it did while the `_shutdown` flag is `False`
 - `start`: called by the `src/main.py` to start the xApp execution by running the `Xapp` class `run` method
 - `stop`: sets the `_shutdown` flag to `True` to interrupt the `_loop` and calls the `Xapp` class `stop` method
 - `_handle_signal`: execute the `stop` function when `SIGTERM`, `SIGQUIT`, or `SIGINT` are received
@@ -206,7 +206,7 @@ However, to make the logs visually cleaner while streaming the instructor's scre
 ------------------------------------------------------------------------ **EXERCISE 1** ------------------------------------------------------------------------
 
 Open a Python3 terminal (use the `python3` command) and:
-- Instantiate a logger with name `logger_test` at the `WARNING` level
+- Instantiate a logger with the name `logger_test` at the `WARNING` level
 - Get the environment parameter values
 - Log an `ERROR` message
 - Log a `WARNING` message
@@ -244,7 +244,7 @@ The results should be similar to:
 
 ------------------------------------------------------------------------ **EXERCISE 2** ------------------------------------------------------------------------
 
-Edit the xApp code to log the xApp config-file as an `INFO` message at the beginning of the `entrypoint` function, before the starting the `_loop` thread.
+Edit the xApp code to log the xApp config-file as an `INFO` message at the beginning of the `entrypoint` function, before starting the `_loop` thread.
 The config-file is accessible as the `_config_data` attribute (created by the `_BaseXapp` class).
 
 After editing the entrypoint, install the `xapp2logsdlrest` by running:
@@ -299,7 +299,7 @@ The config-file log should be similar to:
 
 The OSC Near-RT RIC Kubernetes cluster has a Database as a Service (DBaaS) pod running a [Redis](https://redis.io/) key-value database.
 
-The SDL abstracts the access to the distributed database by providing a lightweight API, which is used by the `SDLWrapper` class, instantiated during the `_BaseXapp` initialization.
+The SDL abstracts access to the distributed database by providing a lightweight API, which is used by the `SDLWrapper` class, instantiated during the `_BaseXapp` initialization.
 
 When instantiating `Xapp` or `RMRXapp` classes, the `use_fake_sdl` flag determines if a local in-memory database is used instead of accessing the DBaaS pod, providing a safe temporary environment for xApp testing.
 
@@ -391,20 +391,20 @@ The `sdl_find_and_get` logs should be similar to:
 # Implementing HTTP REST communication
 
 As part of the `ricxappframe` package, OSC's Python xApp framework provides an `xapp_rest` library implementing an HTTP server for REST communication.
-This library is based in the Python [http](https://docs.python.org/3/library/http.html) package (especifically `http.server`) and assumes that the server must run as a thread.
+This library is based on the Python [http](https://docs.python.org/3/library/http.html) package (specifically `http.server`) and assumes that the server must run as a thread.
 The only requirement to use the `xapp_rest` HTTP server is specifying the `http` port in the config-file for the http service to be created during the xApp installation.
 
 ## HTTP server
 
 To create the HTTP server, a listening address must be informed.
-For example, an HTTP server that listen to any host at the default HTTP port (8080) can be instantiated executing:
+For example, an HTTP server that listens to any host at the default HTTP port (8080) can be instantiated by executing:
 
 ```python
 http_server = xapp_rest.ThreadedHTTPServer("0.0.0.0", 8080)
 ```
 
 Then, we register handlers to be called when an HTTP message is received.
-Every handler is registered with a unique name (used as identifier) an HTTP method (only `GET`, `POST`, and `DELETE` are accepted), a URI path, and a callback function.
+Every handler is registered with a unique name (used as an identifier) an HTTP method (only `GET`, `POST`, and `DELETE` are accepted), a URI path, and a callback function.
 Below we register a handler identified as `"my_handler"` that executes the `my_handler` function when an HTTP GET message is received in the URI path `"/ric/v1/my_path"`: 
 
 ```python
@@ -417,12 +417,12 @@ When invoking the callback function, the HTTP server passes four parameters, in 
 3. `data`: a bytes object with the encoded payload (need to be converted to a string using `data.decode()`)
 4. `ctype`: a string with the content type of the HTTP request
 
-The callback must also return a response: a dictionary with information for the server to construct a HTTP response and send it to the client.
+The callback must also return a response: a dictionary with information for the server to construct an HTTP response and send it to the client.
 The `xapp_rest` provides an `initResponse` function to generate this dictionary.
 The `initResponse` method has two optional parameters for initiating the dictionary with some data: `status` is an integer with the HTTP status code and `response` is a string with the HTTP response text.
-Other informations, like a JSON payload, must be written directly on the response dictionary.
+Other pieces of information, like a JSON payload, must be written directly on the response dictionary.
 
-For example, a simple handler callback function that responds with an `200 OK` HTTP status and a `{"my_key":"my_value"}` dictionary as payload is defined as below:
+For example, we define below a simple handler callback function that responds with a `200 OK` HTTP status and, as payload, a `{"my_key":"my_value"}` dictionary:
 
 ```python
 def my_handler(self, name:str, path:str, data:bytes, ctype:str):
@@ -462,7 +462,7 @@ self.http_server.stop()
 
 Besides handling HTTP messages with a server, we may as well want to communicate via HTTP REST by sending HTTP requests.
 To achieve this, we use the Python [requests](https://pypi.org/project/requests/) package, which simplifies sending an HTTP request into a single function.
-As an usage example, the xApp registration is implemented in the `_BaseXapp` class as a `requests.post` method sending a JSON payload to the AppMgr as below:
+As a usage example, the xApp registration is implemented in the `_BaseXapp` class as a `requests.post` method sending a JSON payload to the AppMgr as below:
 
 ```python
 resp = requests.post(request_url, json=msg)
@@ -614,7 +614,7 @@ For example, when the AppMgr registers or deregisters an xApp, it sends the list
 The AppMgr updates the list of registered xApps when it receives a registration or deregistration request from an xApp, which are HTTP messages carrying a JSON with xApp data.
 Also, both are already implemented in OSC's Python xApp framework `_BaseXapp` class, so xApps written using either `Xapp` or `RMRXapp` classes do not need to re-implement them.
 
-The registration request is an HTTP POST sent by the xApp to the AppMgr during the `_BaseXapp` initilization (called during `Xapp` and `RMRXapp` initializations).
+The registration request is an HTTP POST sent by the xApp to the AppMgr during the `_BaseXapp` initialization (called during `Xapp` and `RMRXapp` initializations).
 The message is sent to the AppMgr `http` service at port `8080` and path `ric/v1/register`.
 Thus, as the AppMgr is deployed at the `ricplt` namespace, the full URL is: `http://service-ricplt-appmgr-http.ricplt:8080/ric/v1/register`.
 
@@ -629,7 +629,7 @@ The `_BaseXapp` class constructs the registration JSON message with the fields b
 
 If the `config` field is not filled in, the AppMgr sends a config-file request (described in the next subsection) at the `configPath` URI path.
 
-The deregistration request is an HTTP POST send by the xApp to the AppMgr during the xApp termination when the `stop` method from `_BaseXapp` class is called.
+The deregistration request is an HTTP POST sent by the xApp to the AppMgr during the xApp termination when the `stop` method from `_BaseXapp` class is called.
 The message is sent to the AppMgr `http` service at port `8080` and URI path `ric/v1/deregister`.
 So, as the AppMgr is deployed at the `ricplt` namespace, the full URL is: `http://service-ricplt-appmgr-http.ricplt:8080/ric/v1/deregister`.
 The `_BaseXapp` class constructs the registration JSON message with the fields below:
@@ -638,7 +638,7 @@ The `_BaseXapp` class constructs the registration JSON message with the fields b
 
 ### Config-file requests
 
-The main reason for config-file requests is if the AppMgr did not received the xApp config-file in the registration request.
+The main reason for config-file requests is if the AppMgr did not receive the xApp config-file in the registration request.
 In this case, the AppMgr sends an HTTP GET to `httpEndpoint` at the URI path `configPath`, where `httpEndpoing` and `configPath` are indicated in the registration request.
 In case of `configPath` being empty, the AppMgr assumes `ric/v1/config` as the default path to sending the config-file request.
 
@@ -734,11 +734,11 @@ The ouput should be:
 
 ### Liveness and readiness probes
 
-Kubernetes uses HTTP GET messages to send probes checking the pod health acording to the pod's logic.
+Kubernetes uses HTTP GET messages to send probes checking the pod health according to the pod's logic.
 The liveness probe is used to check if the pod is healthy, while the readiness probe checks if the pod is ready to start. 
 Both liveness and readiness probes should be configured in the config-file (as objects at the same level of `name`, `version`, `containers`, and `messaging`).
 
-The JSON object in the config-file must define, for the two probes:
+The JSON object in the config-file must define, for both probes:
 - `"httpGet"`: an object with `"path"` and `"port"` containing a string for the URI path and an integer for the HTTP port, respectively 
 - `"initialDelaySeconds"`: an integer with the number of seconds that should be waited after the xApp installation to send the first liveness probe
 - `"periodSeconds"`: an integer with the number of seconds that should be waited to resend the liveness probe
@@ -782,7 +782,7 @@ curl $(kubectl get svc -n ricxapp -o wide | grep xapp2logsdlrest-http | awk '{pr
 curl $(kubectl get svc -n ricxapp -o wide | grep xapp2logsdlrest-http | awk '{print $3}'):8080/ric/v1/health/ready
 ```
 
-The ouput should be:
+The output should be:
 
 ```json
 {"status": "Healthy"}
