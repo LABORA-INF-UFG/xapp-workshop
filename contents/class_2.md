@@ -134,6 +134,10 @@ rmr_xapp.run(
 rmr_xapp.stop() # Deregisters the xApp, stops the RMR loop and stops the RMRXapp loop
 ```
 
+The figure below illustrates the differences between `Xapp` and `RMRXapp` classes:
+
+![xApp deployment](/figs/workshop_ricxappframe_classes_startup.png)
+
 ## Custom xApp class
 
 We define the logic of our xApp into a custom xApp class that does not need to inherit from any other class.
@@ -159,6 +163,10 @@ Additionally, `SIGQUIT` and `SIGINT`, for quitting or interrupting the pod, trig
 
 One important aspect of signal handling is that it can only be called if the xApp is executing in threaded mode.
 Otherwise, the handler will not be called, since the `RMRXapp` loop blocks it.
+
+The figure below illustrates the flow of a custom xApp:
+
+![xApp deployment](/figs/workshop_custom_xapp_flow.png)
 
 Besides `__init__`, the `XappLogSdlRest` has other eight functions:
 - `_entrypoint`: contains the xApp logic that will be executed when the `Xapp` class `run` method is called
