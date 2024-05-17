@@ -528,6 +528,7 @@ def _entrypoint(self, xapp:Xapp):
 
 Write and register a handler for HTTP POST messages at URI path `ric/v1/reset_count` with payload `{"xapp-deletes": X}`, where `X` must be an integer.
 The handler must log the received payload and store the `xapp-deletes` value in the SDL at key `xapp-deletes` and SDL namespace `xapp2logsdlrest`.
+Also, the response payload must be a string indicating that the request was successfully processed.
 
 Then, update the xApp and check its logs.
 
@@ -574,6 +575,7 @@ def sdl_delete_handler(self, name:str, path:str, data:bytes, ctype:str):
         status=200, # Status = 200 OK
         response="SDL delete"
     )
+    response['payload'] = "Updated xapp-deletes successfully."
     return response
 ```
 

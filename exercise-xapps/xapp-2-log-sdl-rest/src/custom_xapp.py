@@ -152,6 +152,6 @@ class XappLogSdlRest:
         Terminates the xApp. Can only be called if the xApp is running in threaded mode.
         """
         self._shutdown = True
-        self.http_server.stop()
         self.logger.info("Calling framework termination to unregister the xApp from AppMgr.")
         self._xapp.stop()
+        self.http_server.stop()
