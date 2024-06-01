@@ -35,13 +35,52 @@ E2 Node control loop: sent/received to/from the E2 Nodes via the E2 Termination 
 To manage publish-subscribe communication, the RMR identifies a subscription with a `subid`, which is an integer.
 The main use for `subid` is subscribing to E2 Nodes, which consists of sending a subscription request to the SubMgr and receiving a response with the generated `subid`. 
 
-## Static route table
+## Route table
 
-`RMR_SEED_RT`
+The RMR relies on a route table to reach endpoints.
+This table is dynamically updated by RtMgr every time an xApp or Near-RT RIC component goes up or down, but it can also be statically defined in a `.rt` file, whose path must be in the `RMR_SEED_RT` environmental variable.
 
-`rte`
+The route table is a list of entry records defining endpoints for every `mtype`.
+There are two kinds of entries: `mse`, which supports subscriptions, and `rte`, which does not support subscriptions and is deprecated, so it might be removed by OSC anytime.
+Therefore, we address only `mse` in this workshop.
 
-`mse`
+The `mse` entry record is a line in the form of:
+```
+mse | <mtype> [,<sender-endpoint>] | <subid> | <endpoint-group>[;<endpoint-group>;...]
+```
+
+where
+- `mtype` is the integer identifying the message type
+- `sender-endpoints` is an optional set of endpoints of sender applications
+- `subid` is an integer identifying the subscription, which must be `-1` if there is no current subscription
+- `endpoint-group` is a set of endpoints that will receive the RMR message
+
+At least one endpoint should be defined for sending an RMR message.
+The RMR groups endpoints to send messages using two approaches:
+- Fanout among groups: the message is broadcast to every group  
+- Round-robin inside the group: only one endpoint in the group (selected in a round-robin way) will receive the message, which is useful for load balancing
+
+For example:
+```
+mse | 12040 xapp3:4560 | -1 | A:4560,B;C,D
+```
+
+We assume `xapp3`, `A`, `B`, `C`, and `D` are defined hostnames.
+When `xapp3` sends a message of type `12040` (RIC Control Request), it is received only by `A` and `C`.
+Sending another message of the same type will result in `B` and `D` receiving the message.
+Note that not defining the endpoint port will make RMR assume the standard `4560` RMR data port.
+
+To contain the entry records, the route table has some metadata in its structure:
+
+```
+<table-name> | start | <table-id>
+<entry-record-1>
+<entry-record-2>
+...
+<table-name> | end | <number-of-entries>
+```
+
+
 
 ## Handling RMR messages
 
