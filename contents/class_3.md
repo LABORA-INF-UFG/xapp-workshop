@@ -73,14 +73,23 @@ Note that not defining the endpoint port will make RMR assume the standard `4560
 To contain the entry records, the route table has some metadata in its structure:
 
 ```
-<table-name> | start | <table-id>
+newrt | start [ | <table-id>]
 <entry-record-1>
 <entry-record-2>
 ...
-<table-name> | end | <number-of-entries>
+newrt | end [ | <number-of-entries>]
 ```
 
+Where `table-id` is a string with the name of the table and `number-of-entries` has the number of entry records of the table.
+Both are optional and used to verify the table's integrity.
 
+This is an example of a full route table to send RMR messages of type `12345` to `xapp4rmrsub`: **(TODO: TEST)**
+
+```
+newrt | start | my_table_1
+mse | 12345 | -1 | service-ricxapp-xapp4rmrsub-rmr.ricxapp
+newrt | end | 1
+```
 
 ## Handling RMR messages
 
