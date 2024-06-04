@@ -11,14 +11,9 @@ import signal
 import json
 import requests
 
-class XappLogSdlRest:
+class XappRmrSubAct:
     """
     Custom xApp class.
-
-    Parameters
-    ----------
-    thread: bool = True
-        Flag for executing the xApp loop as a thread. Default is True.
     """
     def __init__(self, thread:bool = True):
         """
@@ -51,7 +46,6 @@ class XappLogSdlRest:
         self.http_server.handler.add_handler(self.http_server.handler, method="GET", name="config", uri="/ric/v1/config", callback=self.config_handler)
         self.http_server.handler.add_handler(self.http_server.handler, method="GET", name="liveness", uri="/ric/v1/health/alive", callback=self.liveness_handler)
         self.http_server.handler.add_handler(self.http_server.handler, method="GET", name="readiness", uri="/ric/v1/health/ready", callback=self.readiness_handler)
-        self.http_server.handler.add_handler(self.http_server.handler, method="POST", name="sdl_delete", uri="/ric/v1/reset_count", callback=self.sdl_delete_handler)
         self.logger.info("Starting HTTP server.")
         self.http_server.start()  
 
@@ -67,14 +61,7 @@ class XappLogSdlRest:
         ----------
         xapp: Xapp
             This is the xApp framework object (passed by the framework).
-        """         
-
-        # Logging the config file
-        self.logger.info("Config file:" + str(self._xapp._config_data))
-
-        # Logging the list of registered xApps (got from AppMgr)
-        xapp_list = requests.get("http://service-ricplt-appmgr-http.ricplt:8080/ric/v1/xapps")
-        self.logger.info("List of registered xApps: " + str(xapp_list.json()))
+        """
         
         # Starting the xApp loop
         self.logger.info("Starting xApp loop in threaded mode.")
@@ -82,21 +69,13 @@ class XappLogSdlRest:
 
     def _loop(self):
         """
-        Loops logging an increasing counter each second.
-        """    
+        Loops sending a message to the reactive xApp.
+        """     
         while not self._shutdown: # True since custom xApp initialization until stop() is called
-            n_loops = self._xapp.sdl_get(namespace="xapp2logsdlrest", key="xapp-loops")
-            if n_loops is None:
-                n_loops = 0
-            n_loops += 1
-            self._xapp.sdl_set(namespace="xapp2logsdlrest", key="xapp-loops", value=n_loops)
-            if n_loops >= 30:
-                self._xapp.sdl_delete(namespace="xapp2logsdlrest", key="xapp-loops")
-                n_resets = self._xapp.sdl_get(namespace="xapp2logsdlrest", key="xapp-deletes")
-                if n_resets is None:
-                    n_resets = 0
-                self._xapp.sdl_set(namespace="xapp2logsdlrest", key="xapp-deletes", value=n_resets+1)
-            self.logger.info(self._xapp.sdl_find_and_get(namespace="xapp2logsdlrest", prefix="xapp"))
+            for (summary, sbuf) in self._xapp.rmr_get_messages(): # Consumes all available RMR messages
+                self.logger.info("Received RMR message: {}".format(summary))
+                self._xapp.rmr_free(sbuf) # Frees the RMR message buffer
+            self._xapp.rmr_send(payload="Message of type 12345".encode(), mtype=12345) # Sends an RMR message of type 12345
             sleep(1) # Sleeps for 1 second  
 
     def _handle_signal(self, signum: int, frame):
@@ -159,20 +138,6 @@ class XappLogSdlRest:
         self.logger.debug("Readiness handler response: {}.".format(response))
         return response
 
-    def sdl_delete_handler(self, name:str, path:str, data:bytes, ctype:str):
-        """
-        Handler for the HTTP POST /ric/v1/reset_count request.
-        """
-        self.logger.info("Received POST /ric/v1/reset_count request with content type {}.".format(ctype))
-        data_dict = json.loads(data)
-        self.logger.debug("Received payload {}".format(data_dict))
-        self._xapp.sdl_set(namespace="xapp2logsdlrest", key="xapp-deletes", value=data_dict["xapp-deletes"])
-        response = xapp_rest.initResponse(
-            status=200, # Status = 200 OK
-            response="SDL delete"
-        )
-        response['payload'] = "Updated xapp-deletes successfully."
-        return response
 
     def start(self):
         """

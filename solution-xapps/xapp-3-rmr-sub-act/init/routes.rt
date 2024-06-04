@@ -1,2 +1,3 @@
-newrt|start|xapp1deploytest-routes
-newrt|end|0
+newrt | start | xapp3rmrsubact-routes
+mse | 12345 | -1 | service-ricxapp-xapp4rmrsubreact-rmr.ricxapp:4560
+newrt | end | 1

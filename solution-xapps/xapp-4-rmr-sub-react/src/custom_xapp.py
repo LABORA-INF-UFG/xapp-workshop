@@ -1,6 +1,6 @@
 
 # Imports from OSC libraries
-from ricxappframe.xapp_frame import Xapp, rmr
+from ricxappframe.xapp_frame import RMRXapp, rmr
 from mdclogpy import Logger, Level
 from ricxappframe import xapp_rest
 
@@ -11,14 +11,9 @@ import signal
 import json
 import requests
 
-class XappLogSdlRest:
+class XappRmrSubReact:
     """
     Custom xApp class.
-
-    Parameters
-    ----------
-    thread: bool = True
-        Flag for executing the xApp loop as a thread. Default is True.
     """
     def __init__(self, thread:bool = True):
         """
@@ -30,74 +25,76 @@ class XappLogSdlRest:
         #self.logger.get_env_params_values() # Getting the MDC key-value pairs from the environment
         self.logger.info("Initializing the xApp.")
 
-        # Instatiating the xApp framework object 
-        self._xapp = Xapp(entrypoint=self._entrypoint, # Custom entrypoint for starting the framework xApp object
-                                 rmr_port=4560, # Port for RMR data
-                                 rmr_wait_for_ready=True, # Block xApp initiation until RMR is ready
-                                 use_fake_sdl=False) # Use a fake in-memory SDL
-
-        # Registering a handler for terminating the xApp after TERMINATE, QUIT, or INTERRUPT signals
-        signal.signal(signal.SIGTERM, self._handle_signal)
-        signal.signal(signal.SIGQUIT, self._handle_signal)
-        signal.signal(signal.SIGINT, self._handle_signal)
-
         # Initializing custom control variables
         self._shutdown = False # Stops the xApp loop if True
         self._thread = thread # True for executing the xApp loop as a thread
         self._ready = False # True when the xApp is ready to start
+
+        # Instatiating the xApp framework object 
+        self._rmrxapp = RMRXapp(
+            default_handler=self.default_rmr_handler, # Called when no specific handler is found for an RMR message
+            config_handler=self.config_change_handler, # Called when a config change event is detected by inotify
+            post_init=self.post_init, # Called during the RMRXapp initialization, right after _BaseXapp is initialized
+            rmr_port=4560, # Port for RMR data
+            rmr_wait_for_ready=True, # Block xApp initiation until RMR is ready
+            use_fake_sdl=False # Use a fake in-memory SDL
+        )
 
         # Starting a threaded HTTP server listening to any host at port 8080 
         self.http_server = xapp_rest.ThreadedHTTPServer("0.0.0.0", 8080)
         self.http_server.handler.add_handler(self.http_server.handler, method="GET", name="config", uri="/ric/v1/config", callback=self.config_handler)
         self.http_server.handler.add_handler(self.http_server.handler, method="GET", name="liveness", uri="/ric/v1/health/alive", callback=self.liveness_handler)
         self.http_server.handler.add_handler(self.http_server.handler, method="GET", name="readiness", uri="/ric/v1/health/ready", callback=self.readiness_handler)
-        self.http_server.handler.add_handler(self.http_server.handler, method="POST", name="sdl_delete", uri="/ric/v1/reset_count", callback=self.sdl_delete_handler)
         self.logger.info("Starting HTTP server.")
-        self.http_server.start()  
+        self.http_server.start() 
 
-        # The xApp is ready to start now
+        # Checking if the xApp is ready to start
+        while not self._rmrxapp.healthcheck():
+            self.logger.info("Waiting 1 second for RMR and SDL to be ready.")
+            sleep(1)
         self._ready = True
         self.logger.info("xApp is ready.")
-    
-    def _entrypoint(self, xapp:Xapp):
-        """
-        Function containing the xApp logic. Called by the xApp framework object when it executes its run() method.
 
-        Parameters
-        ----------
-        xapp: Xapp
-            This is the xApp framework object (passed by the framework).
-        """         
-
-        # Logging the config file
-        self.logger.info("Config file:" + str(self._xapp._config_data))
-
-        # Logging the list of registered xApps (got from AppMgr)
-        xapp_list = requests.get("http://service-ricplt-appmgr-http.ricplt:8080/ric/v1/xapps")
-        self.logger.info("List of registered xApps: " + str(xapp_list.json()))
+        # Registering handlers for RMR messages
+        self._rmrxapp.register_callback(handler=self.active_xapp_handler, message_type=12345)
         
-        # Starting the xApp loop
-        self.logger.info("Starting xApp loop in threaded mode.")
-        Thread(target=self._loop).start()
-
-    def _loop(self):
+    
+    def active_xapp_handler(self, summary: dict, sbuf):
         """
-        Loops logging an increasing counter each second.
-        """    
-        while not self._shutdown: # True since custom xApp initialization until stop() is called
-            n_loops = self._xapp.sdl_get(namespace="xapp2logsdlrest", key="xapp-loops")
-            if n_loops is None:
-                n_loops = 0
-            n_loops += 1
-            self._xapp.sdl_set(namespace="xapp2logsdlrest", key="xapp-loops", value=n_loops)
-            if n_loops >= 30:
-                self._xapp.sdl_delete(namespace="xapp2logsdlrest", key="xapp-loops")
-                n_resets = self._xapp.sdl_get(namespace="xapp2logsdlrest", key="xapp-deletes")
-                if n_resets is None:
-                    n_resets = 0
-                self._xapp.sdl_set(namespace="xapp2logsdlrest", key="xapp-deletes", value=n_resets+1)
-            self.logger.info(self._xapp.sdl_find_and_get(namespace="xapp2logsdlrest", prefix="xapp"))
-            sleep(1) # Sleeps for 1 second  
+        Handler for the active xapp RMR message.
+        """
+        self.logger.info("Received active-xapp RMR message with summary: {}.".format(summary))
+        self._rmrxapp.rmr_free(sbuf)
+        self._rmrxapp.rmr_rts(sbuf, new_payload="Received message correctly".encode()) # Responding to the active-xapp message
+    
+    def default_rmr_handler(self, summary: dict, sbuf):
+        """
+        Default RMR message handler.
+        """
+        self.logger.info("Received RMR message with summary: {}.".format(summary))
+        self._rmrxapp.rmr_free(sbuf) # Freeing the RMR message buffer
+    
+    def config_change_handler(self, rmrxapp:RMRXapp, json: dict):
+        """
+        Handler for the config change event.
+        """
+        self.logger.info("Detected a config change event.")
+
+        self.logger.debug(f"Parameters types: self = {type(self)}, rmr_xapp = {type(rmrxapp)}, json = {type(json)}")
+
+        rmrxapp._config_data = json
+        self.logger.debug("New config data: {}.".format(json))
+    
+    def post_init(self, rmr_xapp: RMRXapp):
+        """
+        Post initialization function.
+        """
+        self.logger.info("Post initialization started.")
+
+        # Registering a handler for terminating the xApp after TERMINATE, QUIT, or INTERRUPT signals
+        signal.signal(signal.SIGTERM, self._handle_signal)
+        signal.signal(signal.SIGQUIT, self._handle_signal)
+        signal.signal(signal.SIGINT, self._handle_signal)
 
     def _handle_signal(self, signum: int, frame):
         """
@@ -115,7 +112,7 @@ class XappLogSdlRest:
             status=200, # Status = 200 OK
             response="Config data"
         ) # Initiating HTTP response
-        response['payload'] = json.dumps(self._xapp._config_data) # Payload = the xApp config-file
+        response['payload'] = json.dumps(self._rmrxapp._config_data) # Payload = the xApp config-file
         self.logger.debug("Config handler response: {}.".format(response))
         return response
 
@@ -124,7 +121,7 @@ class XappLogSdlRest:
         Handler for the HTTP GET /ric/v1/health/alive request.
         """
         self.logger.info("Received GET /ric/v1/health/alive request with content type {}.".format(ctype))
-        if self._xapp.healthcheck():
+        if self._rmrxapp.healthcheck():
             response = xapp_rest.initResponse(
                 status=200, # Status = 200 OK
                 response="Liveness"
@@ -159,26 +156,11 @@ class XappLogSdlRest:
         self.logger.debug("Readiness handler response: {}.".format(response))
         return response
 
-    def sdl_delete_handler(self, name:str, path:str, data:bytes, ctype:str):
-        """
-        Handler for the HTTP POST /ric/v1/reset_count request.
-        """
-        self.logger.info("Received POST /ric/v1/reset_count request with content type {}.".format(ctype))
-        data_dict = json.loads(data)
-        self.logger.debug("Received payload {}".format(data_dict))
-        self._xapp.sdl_set(namespace="xapp2logsdlrest", key="xapp-deletes", value=data_dict["xapp-deletes"])
-        response = xapp_rest.initResponse(
-            status=200, # Status = 200 OK
-            response="SDL delete"
-        )
-        response['payload'] = "Updated xapp-deletes successfully."
-        return response
-
     def start(self):
         """
         Starts the xApp loop.
         """ 
-        self._xapp.run()
+        self._rmrxapp.run()
 
     def stop(self):
         """
@@ -186,5 +168,5 @@ class XappLogSdlRest:
         """
         self._shutdown = True
         self.logger.info("Calling framework termination to unregister the xApp from AppMgr.")
-        self._xapp.stop()
+        self._rmrxapp.stop()
         self.http_server.stop()

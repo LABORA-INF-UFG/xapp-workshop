@@ -1,12 +1,12 @@
 {
-    "name": "xapp2logsdlrest",
+    "name": "xapp4rmrsubreact",
     "version": "1.0.0",
     "containers": [
         {
-            "name": "xapp2logsdlrestcontainer",
+            "name": "xapp4rmrsubreactcontainer",
             "image": {
                 "registry": "127.0.0.1:5001",
-                "name": "xapp2logsdlrest",
+                "name": "xapp4rmrsubreact",
                 "tag": "1.0.0"
             }
         }
@@ -15,19 +15,19 @@
         "ports": [
             {
                 "name": "http",
-                "container": "xapp2logsdlrestcontainer",
+                "container": "xapp4rmrsubreactcontainer",
                 "port": 8080,
                 "description": "http service"
             },
             {
                 "name": "rmrroute",
-                "container": "xapp2logsdlrestcontainer",
+                "container": "xapp4rmrsubreactcontainer",
                 "port": 4561,
                 "description": "rmr route port for bouncer xapp"
             },
             {
                 "name": "rmrdata",
-                "container": "xapp2logsdlrestcontainer",
+                "container": "xapp4rmrsubreactcontainer",
                 "port": 4560,
                 "rxMessages": ["RIC_SUB_RESP", "RIC_INDICATION","RIC_SUB_DEL_RESP"],
                 "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ"],

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 namespace="ricxapp"
-xapp_name="xapp2logsdlrest"
+xapp_name="xapp4rmrsubreact"
 
 echo "namespace=$namespace"
 echo "xapp_name=$xapp_name"
