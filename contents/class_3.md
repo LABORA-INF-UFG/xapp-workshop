@@ -9,12 +9,13 @@ At the end of this class, you should be able to:
 
 The RIC Message Router (RMR) is a lightweight library for communication between OSC's Near-RT RIC components (which includes xApps).
 The RMR supports the publish-subscribe pattern and provides an API for communicating without specifying endpoints.
-This is done by identifying messages with a message type (`mtype`), which is an integer associated with the hosts who will receive the message.
-Some values for `mtype` are already defined in the [RMR implementation](https://github.com/o-ran-sc/ric-plt-lib-rmr/blob/master/src/rmr/common/include/RIC_message_types.h) for specific purposes.
-These reserved values also have an associated string, which can be used in the xApp config-file when defining `txMessages` and `rxMessages`.
+This is done by identifying messages with a message type (`mtype`), which is an integer and a name already known by the Near-RT RIC components to transport the message appropriately.
+The defined values for `mtype` can be found in the [RMR implementation](https://github.com/o-ran-sc/ric-plt-lib-rmr/blob/master/src/rmr/common/include/RIC_message_types.h).
+To enable the RMR communication of the xApp, the names of the `mtypes` it can transmit or receive must be defined in the `rmrdata` section of the config-file, in the `txMessages` and `rxMessages` arrays, respectively.
+
 Below we list some important `mtype` values defined in the RMR.
 
-Health check: already implemented in the `Xapp` and `RMRXapp` classes **(TODO: DOUBLE CHECK)**
+Health check: already handled inisde the `Xapp` and `RMRXapp` classes
 - `100` - `RIC_HEALTH_CHECK_REQ`: Health check request
 - `101` - `RIC_HEALTH_CHECK_RESP`: Health check response
 
@@ -31,6 +32,18 @@ E2 Node control loop: sent/received to/from the E2 Nodes via the E2 Termination 
 - `12041` - `RIC_CONTROL_ACK`
 - `12042` - `RIC_CONTROL_FAILURE`
 - `12050` - `RIC_INDICATION`
+
+**EXERCISE X**
+Insert two `mtype` to use in the xApp communication
+
+<p>
+<details>
+<summary>Solution</summary>
+
+TODO
+
+</details>
+</p>
 
 To manage publish-subscribe communication, the RMR identifies a subscription with a `subid`, which is an integer.
 The main use for `subid` is subscribing to E2 Nodes, which consists of sending a subscription request to the SubMgr and receiving a response with the generated `subid`. 
@@ -101,23 +114,75 @@ Despite this, it is common to only refer to the buffer when freeing it, since al
 The `summary` fields are accessed through keys defined in the `rmr` library:
 - `summary[rmr.RMR_MS_PAYLOAD]`: the payload (a bytes object encoded in UTF-8)
 - `summary[rmr.RMR_MS_PAYLOAD_LEN]`: the number of bytes of the payload
+- `summary[rmr.RMR_MS_PAYLOAD_MAX]`: the maximum number of bytes usable in the payload
 - `summary[rmr.RMR_MS_SUB_ID]`: the subscription id (`subid`)
 - `summary[rmr.RMR_MS_TRN_ID]`: the transaction id, used for replying messages
-- `summary[rmr.RMR_MS_MSG_STATUS]`: the message status 
-- `summary[rmr.RMR_MS_ERRNO]`: the number identifying the occurred error, if the message status is not ok
+- `summary[rmr.RMR_MS_MSG_STATE]`: the state of the message, an integer 
+- `summary[rmr.RMR_MS_MSG_STATUS]`: the message state, but converted to an string (e.g. `"RMR_OK"`)
+- `summary[rmr.RMR_MS_ERRNO]`: an ID to the occurred error, if the message status is not ok
+- `summary[rmr.RMR_MS_MSG_SOURCE]`: the hostname of the sender
+- `summary[rmr.RMR_MS_MEID]`: the managed entity (e.g. a gNB) ID, in bytes
 
-A pair or `summary` and `sbuf` (the C pointer to the RMR buffer) refer to an RMR message in the xApp framewok.
+A buffer is allocated for a RMR message everytime one is sended or received.
+This buffer is referred to as `sbuf`, a void C pointer.
+When handling RMR messages, a pair or `summary` and `sbuf` are sufficient to access data and metadata and free the buffer.
 Both `Xapp` and `RMRXapp` define four high-level functions for RMR communication:
 - `rmr_get_messages`: calls the RMR loop to return a generator that iterates through messages yielding `(summary, sbuf)` tuples
 - `rmr_send`: receives a UTF-8 encoded `payload` and a `mtype` to send the RMR message
 - `rmr_rts`: returns the received message to the sender, optionally changing the `payload` and `mtype`
 - `rmr_free`: frees the `sbuf` RMR buffer
 
-It is important to remid that the `sbuf` must **always** be freed after receiving or sending an RMR message.
-The only exception is the `rmr_send` function, which frees `sbuf` after sending. 
+It is important to remind that the `sbuf` must **always** be freed after receiving or sending an RMR message.
+The only exception is the `rmr_send` function, which frees `sbuf` after sending.
+Freeing an already freed `sbuf` may break the xApp. 
 
+The `RMRXapp` implements a loop of checking for received RMR messages and calling the registered handlers, while a developer using the `Xapp` class must implement it.
+Below we provide a function for the `Xapp` that works identically to executing the `RMRXapp` loop one single time.
+To continuosly check for RMR messages, it needs to be continuously called.
 
-A handler for RMR messages must have the format of `handler(summary, sbuf)` to be called by the `RMRXapp` loop, passing `sbuf` as the pointer to the RMR message buffer and `summary` as a dictionary containing the RMR message data and metadata.
+```python
+def receive_RMR_messages(self, xapp: Xapp, dispatch:dict):
+    for summary, sbuf in xapp.rmr_get_messages():
+        func = dispatch.get(summary[rmr.RMR_MS_MSG_TYPE], default_handler)
+        func(xapp, summary, sbuf)
+```
+
+In this function, `xapp` is the `Xapp` framework object and `dispatch` is a dictionary in the format of `mtype: handler_function`.
+Note that, if no handler function is defined for the received `mtype`, a `default_handler` is called.
+The handlers (including the default handler) must have the same signature of a handler registered in the `RMRXapp` dispatcher, i.e. receiving `xapp`, `summary`, and `sbuf`, in this order.
+
+This is a handler that logs the received message and return it to the sender with a new payload:
+
+```python
+def simple_handler(self, xapp:Xapp, summary:dict, sbuf):
+    self.logger.info(
+        "Received RMR message of type {} with payload = {}".format(
+            summary[rmr.RMR_MS_MSG_TYPE],
+            summary[rmr.RMR_MS_PAYLOAD].decode()
+        )
+    )
+    xapp.rmr_rts(sbuf, new_payload="ACK".encode()) # Return to sender
+    xapp.rmr_free(sbuf)
+```
+
+Note that the same buffer (`sbuf`) is used when replying to the sender and is freed only after the reply.
+
+To register this handler in the `Xapp` (assuming the `receive_RMR_messages` function described before), we only need to insert it on the `dispatch` dictionary.
+The code below assumes that `simple_handler` must be registered to the `mtype` of value `12345`. 
+
+```python
+dispatch = {}
+dispatch[12345] = simple_handler
+```
+
+Similarly, on the `RMRXapp` class, we just have to call the `register_callback` method from the `rmrxapp` framework object:
+
+```python
+rmrxapp.register_callback(handler=simple_handler, message_type=12345)
+```
+
+**EXERCISE X**
+Make xapp3rmrsubact and xapp4rmrsubreact communicate.
 
 
 # E2 Node subscription
