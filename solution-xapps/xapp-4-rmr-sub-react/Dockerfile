@@ -28,7 +28,8 @@ RUN git clone --branch $rmr_version https://gerrit.oran-osc.org/r/ric-plt/lib/rm
 
 FROM python:3.8-alpine
 
-ARG frame_version=3.2.0
+#ARG frame_version=3.2.0
+ARG frame_version=i-release
 
 COPY --from=bldr /usr/local/bin/rmr* /usr/local/bin/
 COPY --from=bldr /usr/local/include/rmr /usr/local/include/rmr

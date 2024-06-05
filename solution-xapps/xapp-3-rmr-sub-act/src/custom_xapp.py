@@ -78,27 +78,22 @@ class XappRmrSubAct:
         Loops sending a message to the reactive xApp.
         """     
         while not self._shutdown: # True since custom xApp initialization until stop() is called
-            if not self._xapp.rmr_send(payload="Message of type 30000 from the active xApp".encode(), mtype=30000, retries=3): # Sends an RMR message of type 30000
-                self.logger.error("Message of type 30000 could not be sent")
-            sleep(1) # Sleeps for 1 second
             self._receive_RMR_messages() # Call handlers for all received RMR messages
+            if not self._xapp.rmr_send(payload="Message of type 30000 from the active xApp".encode(), mtype=30000): # Sends an RMR message of type 30000
+                self.logger.error("Message of type 30000 could not be sent")
+            else:
+                self.logger.info("Message of type 30000 sent to the reactive xApp.")
+            sleep(1) # Sleeps for 1 second
+            
 
     def _receive_RMR_messages(self):
         """
         Call handlers for all received RMR messages.
         """
-        message_it = self._xapp.rmr_get_messages()
-        try:
-            while True:
-                summary, sbuf = next(message_it)
-                func = self._dispatch.get(summary[rmr.RMR_MS_MSG_TYPE], None)
-                if not func:
-                    func = self._default_handler
-                self.logger.debug("Invoking RMR message handler on type {}".format(summary[rmr.RMR_MS_MSG_TYPE]))
-                func(self._xapp, summary, sbuf)
-                self._xapp.rmr_free(sbuf)
-        except StopIteration:
-            pass
+        for summary, sbuf in self._xapp.rmr_get_messages():
+            func = self._dispatch.get(summary[rmr.RMR_MS_MSG_TYPE], self._default_handler)
+            self.logger.debug("Invoking RMR message handler on type {}".format(summary[rmr.RMR_MS_MSG_TYPE]))
+            func(self._xapp, summary, sbuf)
     
     def _default_handler(self, xapp:Xapp, summary:dict, sbuf):
         """
@@ -145,18 +140,11 @@ class XappRmrSubAct:
         Handler for the HTTP GET /ric/v1/health/alive request.
         """
         self.logger.info("Received GET /ric/v1/health/alive request with content type {}.".format(ctype))
-        if self._xapp.healthcheck():
-            response = xapp_rest.initResponse(
-                status=200, # Status = 200 OK
-                response="Liveness"
-            ) # Initiating HTTP response
-            response['payload'] = json.dumps({"status": "Healthy"}) # Payload = status: Healthy
-        else:
-            response = xapp_rest.initResponse(
-                status=503, # Status = 503 Service Unavailable
-                response="Liveness"
-            )
-            response['payload'] = json.dumps({"status": "Unhealthy"}) # Payload = status: Unhealthy
+        response = xapp_rest.initResponse(
+            status=200, # Status = 200 OK
+            response="Liveness"
+        ) # Initiating HTTP response
+        response['payload'] = json.dumps({"status": "Healthy"}) # Payload = status: Healthy
         self.logger.debug("Liveness handler response: {}.".format(response))
         return response
 

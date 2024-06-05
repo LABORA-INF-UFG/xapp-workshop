@@ -29,39 +29,11 @@
                 "name": "rmrdata",
                 "container": "xapp3rmrsubactcontainer",
                 "port": 4560,
-                "rxMessages": ["RIC_SUB_RESP", "RIC_INDICATION","RIC_SUB_DEL_RESP", "XAPP_ACK"],
-                "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ", "XAPP_REQ"],
-                "mtypes" : [
-                    {"name":"XAPP_REQ","id":30000},
-                    {"name":"XAPP_ACK","id":12346}
-                ],
+                "rxMessages": ["RIC_SUB_RESP", "RIC_INDICATION","RIC_SUB_DEL_RESP","TS_QOE_PRED_REQ"],
+                "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ", "TS_UE_LIST"],
                 "policies": [1],
                 "description": "rmr data port"
             }
         ]
-    },
-    "rmr": {
-        "protPort": "tcp:4560",
-        "maxSize": 2072,
-        "numWorkers": 1,
-        "rxMessages": ["RIC_SUB_RESP", "RIC_INDICATION","RIC_SUB_DEL_RESP", "XAPP_ACK"],
-        "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ", "XAPP_REQ", "TS_UE_LIST"],
-        "policies": [1]
-    },
-    "readinessProbe": {
-        "httpGet": {
-            "path": "ric/v1/health/ready",
-            "port": 8080
-        },
-        "initialDelaySeconds": 5,
-        "periodSeconds": 15
-    },
-    "livenessProbe": {
-        "httpGet": {
-            "path": "ric/v1/health/alive",
-            "port": 8080
-        },
-        "initialDelaySeconds": 5,
-        "periodSeconds": 15
     }
 }
