@@ -1,3 +1,4 @@
-newrt | start | xapp3rmrsubact-routes
-mse | 12345 | -1 | service-ricxapp-xapp4rmrsubreact-rmr.ricxapp:4560
-newrt | end | 1
+newrt|start
+rte|30000|service-ricxapp-xapp4rmrsubreact-rmr.ricxapp:4560
+rte|30001|service-ricxapp-xapp4rmrsubreact-rmr.ricxapp:4560
+newrt|end

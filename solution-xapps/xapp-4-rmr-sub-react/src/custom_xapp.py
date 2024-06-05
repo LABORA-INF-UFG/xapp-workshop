@@ -21,7 +21,7 @@ class XappRmrSubReact:
         """
         
         # Initializing a logger for the custom xApp instance in Debug level (logs everything)
-        self.logger = Logger(name="XappLogSdlRest", level=Level.DEBUG) # The name is included in each log entry, Levels: DEBUG < INFO < WARNING < ERROR
+        self.logger = Logger(name="XappRmrSubReact", level=Level.DEBUG) # The name is included in each log entry, Levels: DEBUG < INFO < WARNING < ERROR
         #self.logger.get_env_params_values() # Getting the MDC key-value pairs from the environment
         self.logger.info("Initializing the xApp.")
 
@@ -65,14 +65,14 @@ class XappRmrSubReact:
         """
         self.logger.info("Received active-xapp RMR message with summary: {}.".format(summary))
         self._rmrxapp.rmr_free(sbuf)
-        self._rmrxapp.rmr_rts(sbuf, new_payload="Received message correctly".encode()) # Responding to the active-xapp message
+        self._rmrxapp.rmr_rts(sbuf, new_payload="Received message correctly".encode(), new_mtype=12346) # Responding to the active-xapp message
     
-    def default_rmr_handler(self, summary: dict, sbuf):
+    def default_rmr_handler(self, rmrxapp: RMRXapp, summary: dict, sbuf):
         """
         Default RMR message handler.
         """
         self.logger.info("Received RMR message with summary: {}.".format(summary))
-        self._rmrxapp.rmr_free(sbuf) # Freeing the RMR message buffer
+        rmrxapp.rmr_free(sbuf) # Freeing the RMR message buffer
     
     def config_change_handler(self, rmrxapp:RMRXapp, json: dict):
         """

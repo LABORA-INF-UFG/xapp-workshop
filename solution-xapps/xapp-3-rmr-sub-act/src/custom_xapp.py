@@ -21,15 +21,17 @@ class XappRmrSubAct:
         """
         
         # Initializing a logger for the custom xApp instance in Debug level (logs everything)
-        self.logger = Logger(name="XappLogSdlRest", level=Level.DEBUG) # The name is included in each log entry, Levels: DEBUG < INFO < WARNING < ERROR
+        self.logger = Logger(name="XappRmrSubAct", level=Level.DEBUG) # The name is included in each log entry, Levels: DEBUG < INFO < WARNING < ERROR
         #self.logger.get_env_params_values() # Getting the MDC key-value pairs from the environment
         self.logger.info("Initializing the xApp.")
 
         # Instatiating the xApp framework object 
-        self._xapp = Xapp(entrypoint=self._entrypoint, # Custom entrypoint for starting the framework xApp object
-                                 rmr_port=4560, # Port for RMR data
-                                 rmr_wait_for_ready=True, # Block xApp initiation until RMR is ready
-                                 use_fake_sdl=False) # Use a fake in-memory SDL
+        self._xapp = Xapp(
+            entrypoint=self._entrypoint, # Custom entrypoint for starting the framework xApp object
+            rmr_port=4560, # Port for RMR data
+            rmr_wait_for_ready=True, # Block xApp initiation until RMR is ready
+            use_fake_sdl=False # Use a fake in-memory SDL
+        )
 
         # Registering a handler for terminating the xApp after TERMINATE, QUIT, or INTERRUPT signals
         signal.signal(signal.SIGTERM, self._handle_signal)
@@ -40,6 +42,10 @@ class XappRmrSubAct:
         self._shutdown = False # Stops the xApp loop if True
         self._thread = thread # True for executing the xApp loop as a thread
         self._ready = False # True when the xApp is ready to start
+
+        # Registering handlers for RMR messages
+        self._dispatch = {} # Dictionary for calling handlers of specific message types
+        self._dispatch[30001] = self._handle_react_xapp_msg
 
         # Starting a threaded HTTP server listening to any host at port 8080 
         self.http_server = xapp_rest.ThreadedHTTPServer("0.0.0.0", 8080)
@@ -72,11 +78,47 @@ class XappRmrSubAct:
         Loops sending a message to the reactive xApp.
         """     
         while not self._shutdown: # True since custom xApp initialization until stop() is called
-            for (summary, sbuf) in self._xapp.rmr_get_messages(): # Consumes all available RMR messages
-                self.logger.info("Received RMR message: {}".format(summary))
-                self._xapp.rmr_free(sbuf) # Frees the RMR message buffer
-            self._xapp.rmr_send(payload="Message of type 12345".encode(), mtype=12345) # Sends an RMR message of type 12345
-            sleep(1) # Sleeps for 1 second  
+            if not self._xapp.rmr_send(payload="Message of type 30000 from the active xApp".encode(), mtype=30000, retries=3): # Sends an RMR message of type 30000
+                self.logger.error("Message of type 30000 could not be sent")
+            sleep(1) # Sleeps for 1 second
+            self._receive_RMR_messages() # Call handlers for all received RMR messages
+
+    def _receive_RMR_messages(self):
+        """
+        Call handlers for all received RMR messages.
+        """
+        message_it = self._xapp.rmr_get_messages()
+        try:
+            while True:
+                summary, sbuf = next(message_it)
+                func = self._dispatch.get(summary[rmr.RMR_MS_MSG_TYPE], None)
+                if not func:
+                    func = self._default_handler
+                self.logger.debug("Invoking RMR message handler on type {}".format(summary[rmr.RMR_MS_MSG_TYPE]))
+                func(self._xapp, summary, sbuf)
+                self._xapp.rmr_free(sbuf)
+        except StopIteration:
+            pass
+    
+    def _default_handler(self, xapp:Xapp, summary:dict, sbuf):
+        """
+        Handler for RMR messages of unregistered types.
+        """
+        xapp.logger.info(
+            "Received unknow message type {} with payload = {}".format(
+                summary[rmr.RMR_MS_MSG_TYPE],
+                summary[rmr.RMR_MS_PAYLOAD].decode()
+            )
+        )
+        xapp.rmr_free(sbuf)
+    
+    def _handle_react_xapp_msg(self, xapp:Xapp, summary:dict, sbuf):
+        """
+        Handler for RMR messages of type 30001 received from the reactive xApp.
+        """
+        rcv_payload = summary[rmr.RMR_MS_PAYLOAD].decode() # Decodes the RMR message payload
+        self.logger.info("Received message of type 30001 with payload: {}".format(rcv_payload))
+        xapp.rmr_free(sbuf) # Frees the RMR message buffer
 
     def _handle_signal(self, signum: int, frame):
         """

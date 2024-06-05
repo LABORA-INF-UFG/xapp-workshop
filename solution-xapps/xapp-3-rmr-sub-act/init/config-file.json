@@ -23,18 +23,30 @@
                 "name": "rmrroute",
                 "container": "xapp3rmrsubactcontainer",
                 "port": 4561,
-                "description": "rmr route port for bouncer xapp"
+                "description": "rmr route port"
             },
             {
                 "name": "rmrdata",
                 "container": "xapp3rmrsubactcontainer",
                 "port": 4560,
-                "rxMessages": ["RIC_SUB_RESP", "RIC_INDICATION","RIC_SUB_DEL_RESP"],
-                "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ"],
+                "rxMessages": ["RIC_SUB_RESP", "RIC_INDICATION","RIC_SUB_DEL_RESP", "XAPP_ACK"],
+                "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ", "XAPP_REQ"],
+                "mtypes" : [
+                    {"name":"XAPP_REQ","id":30000},
+                    {"name":"XAPP_ACK","id":12346}
+                ],
                 "policies": [1],
                 "description": "rmr data port"
             }
         ]
+    },
+    "rmr": {
+        "protPort": "tcp:4560",
+        "maxSize": 2072,
+        "numWorkers": 1,
+        "rxMessages": ["RIC_SUB_RESP", "RIC_INDICATION","RIC_SUB_DEL_RESP", "XAPP_ACK"],
+        "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ", "XAPP_REQ", "TS_UE_LIST"],
+        "policies": [1]
     },
     "readinessProbe": {
         "httpGet": {

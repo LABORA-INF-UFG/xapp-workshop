@@ -29,8 +29,12 @@
                 "name": "rmrdata",
                 "container": "xapp4rmrsubreactcontainer",
                 "port": 4560,
-                "rxMessages": ["RIC_SUB_RESP", "RIC_INDICATION","RIC_SUB_DEL_RESP"],
-                "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ"],
+                "rxMessages": ["RIC_SUB_RESP", "RIC_INDICATION","RIC_SUB_DEL_RESP", "XAPP_REQ"],
+                "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ", "XAPP_ACK"],
+                "mtypes" : [
+                    {"name":"XAPP_REQ","id":30000},
+                    {"name":"XAPP_ACK","id":12346}
+                ],
                 "policies": [1],
                 "description": "rmr data port"
             }
