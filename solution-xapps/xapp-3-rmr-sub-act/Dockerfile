@@ -28,7 +28,8 @@ RUN git clone --branch $rmr_version https://gerrit.oran-osc.org/r/ric-plt/lib/rm
 
 FROM python:3.8-alpine
 
-ARG frame_version=3.2.0
+#ARG frame_version=3.2.0
+ARG frame_version=i-release
 
 COPY --from=bldr /usr/local/bin/rmr* /usr/local/bin/
 COPY --from=bldr /usr/local/include/rmr /usr/local/include/rmr
@@ -42,8 +43,11 @@ RUN apk update && apk add gcc musl-dev bash git
 # RMR setup
 RUN mkdir -p /opt/route/
 COPY init/routes.rt /opt/route/routes.rt
+ENV RMR_CTL_PORT=4561
 ENV RMR_SEED_RT=/opt/route/routes.rt
-ENV RMR_LOG_VLEVEL=4
+ENV RMR_LOG_VLEVEL=5
+ENV RMR_RTREQ_FREQ=5
+ENV RMR_WARNINGS=1
 
 RUN git clone -b ${frame_version} https://github.com/o-ran-sc/ric-plt-xapp-frame-py /ric-plt-xapp-frame-py/
 RUN pip install --upgrade pip && pip install certifi six python_dateutil setuptools urllib3 logger requests inotify_simple mdclogpy google-api-python-client msgpack ricsdl
