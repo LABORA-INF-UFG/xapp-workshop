@@ -1,0 +1,9 @@
+Error on RtMgr:
+
+{"ts":1717692813840,"crit":"ERROR","id":"rtmgr","mdc":{"CONTAINER_NAME":"","HOST_NAME":"","PID":"1","POD_NAME":"","SERVICE_NAME":"","SYSTEM_NAME":"","time":"2024-06-06T16:53:33"},"msg":"XApp instance not found: service-ricxapp-xapp4rmrsubreact-rmr.ricxapp:4560"}
+{"ts":1717692813840,"crit":"ERROR","id":"rtmgr","mdc":{"CONTAINER_NAME":"","HOST_NAME":"","PID":"1","POD_NAME":"","SERVICE_NAME":"","SYSTEM_NAME":"","time":"2024-06-06T16:53:33"},"msg":"RoutingManager->SubManager Add Request Failed: XApp instance not found: service-ricxapp-xapp4rmrsubreact-rmr.ricxapp:4560"}
+{"ts":1717692824865,"crit":"ERROR","id":"rtmgr","mdc":{"CONTAINER_NAME":"","HOST_NAME":"","PID":"1","POD_NAME":"","SERVICE_NAME":"","SYSTEM_NAME":"","time":"2024-06-06T16:53:44"},"msg":"Cannot create socket for endpoint: xapp4rmrsubreact due to:cannot open wormhole connection for endpoint:service-ricxapp-xapp4rmrsubreact-rmr.ricxapp:4560 due to invalid Wormhole ID: � count: 8"}
+
+This occurs because the RtMgr does not have the service-ricxapp-xapp4rmrsubreact-rmr.ricxapp:4560 endpoint stored yet.
+Still do not know why this is happening.
+Hypothesis: the RtMgr is not receiving the xApp list from the AppMgr.
