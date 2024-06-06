@@ -1,0 +1,39 @@
+{
+    "name": "xapp3rmrsubact",
+    "version": "1.0.0",
+    "containers": [
+        {
+            "name": "xapp3rmrsubactcontainer",
+            "image": {
+                "registry": "127.0.0.1:5001",
+                "name": "xapp3rmrsubact",
+                "tag": "1.0.0"
+            }
+        }
+    ],
+    "messaging": {
+        "ports": [
+            {
+                "name": "http",
+                "container": "xapp3rmrsubactcontainer",
+                "port": 8080,
+                "description": "http service"
+            },
+            {
+                "name": "rmrroute",
+                "container": "xapp3rmrsubactcontainer",
+                "port": 4561,
+                "description": "rmr route port"
+            },
+            {
+                "name": "rmrdata",
+                "container": "xapp3rmrsubactcontainer",
+                "port": 4560,
+                "rxMessages": ["RIC_SUB_RESP", "RIC_INDICATION","RIC_SUB_DEL_RESP"],
+                "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ"],
+                "policies": [1],
+                "description": "rmr data port"
+            }
+        ]
+    }
+}
