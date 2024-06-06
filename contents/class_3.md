@@ -33,20 +33,55 @@ E2 Node control loop: sent/received to/from the E2 Nodes via the E2 Termination 
 - `12042` - `RIC_CONTROL_FAILURE`
 - `12050` - `RIC_INDICATION`
 
+To manage publish-subscribe communication, the RMR identifies a subscription with a `subid`, which is an integer.
+The main use for `subid` is subscribing to E2 Nodes, which consists of sending a subscription request to the SubMgr and receiving a response with the generated `subid`. 
+
+In this class, we will make two xApps (`xapp3rmrsubact` and `xapp4rmrsubreact`) communicate with each other using RMR messages.
+We can not define new `mtypes`, since they need to be implemented in the RMR library of the Routing Manager (RtMgr) to distribute routes for the `mtype` numeric values.
+Therefore, we use two already defined `mtypes` from [OSC's traffic steering xApp](https://docs.o-ran-sc.org/projects/o-ran-sc-ric-app-ts/en/latest/user-guide.html):
+- `30000` - `TS_UE_LIST`
+- `30001` - `TS_QOE_PRED_REQ`
+
 **EXERCISE X**
-Insert two `mtype` to use in the xApp communication
+Edit the config-file from `xapp3rmrsubact` (located in `xapp-3-rmr-sub-act/init/config-file.json`) and `xapp4rmrsubreact` (located in `xapp-4-rmr-sub-react/init/config-file.json`) to add the `mtypes` for them to communicate using RMR:
+- `xapp3rmrsubact` must send `TS_UE_LIST` messages to `xapp4rmrsubreact`
+- `xapp4rmrsubreact` must send `TS_QOE_PRED_REQ` to `xapp3rmrsubact`
 
 <p>
 <details>
 <summary>Solution</summary>
 
-TODO
+`xapp3rmrsubact` config-file `rmrdata` port:
+
+```json
+{
+    "name": "rmrdata",
+    "container": "xapp3rmrsubactcontainer",
+    "port": 4560,
+    "rxMessages": ["RIC_SUB_RESP", "RIC_INDICATION","RIC_SUB_DEL_RESP","TS_QOE_PRED_REQ"],
+    "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ", "TS_UE_LIST"],
+    "policies": [1],
+    "description": "rmr data port"
+}
+```
+
+`xapp4rmrsubreact` config-file `rmrdata` port:
+
+```json
+{
+    "name": "rmrdata",
+    "container": "xapp4rmrsubreactcontainer",
+    "port": 4560,
+    "rxMessages": ["RIC_SUB_RESP","RIC_SUB_DEL_RESP", "RIC_INDICATION", "TS_UE_LIST"],
+    "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ", "RIC_CONTROL_REQ", "TS_QOE_PRED_REQ"],
+    "policies": [1],
+    "description": "rmr data port"
+}
+```
 
 </details>
 </p>
 
-To manage publish-subscribe communication, the RMR identifies a subscription with a `subid`, which is an integer.
-The main use for `subid` is subscribing to E2 Nodes, which consists of sending a subscription request to the SubMgr and receiving a response with the generated `subid`. 
 
 ## Route table
 
