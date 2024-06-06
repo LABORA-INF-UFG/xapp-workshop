@@ -29,8 +29,8 @@
                 "name": "rmrdata",
                 "container": "xapp4rmrsubreactcontainer",
                 "port": 4560,
-                "rxMessages": ["RIC_SUB_RESP", "RIC_INDICATION","RIC_SUB_DEL_RESP", "TS_UE_LIST"],
-                "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ", "TS_QOE_PRED_REQ"],
+                "rxMessages": ["RIC_SUB_RESP","RIC_SUB_DEL_RESP", "RIC_INDICATION", "TS_UE_LIST"],
+                "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ", "RIC_CONTROL_REQ", "TS_QOE_PRED_REQ"],
                 "policies": [1],
                 "description": "rmr data port"
             }
