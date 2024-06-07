@@ -473,6 +473,8 @@ Also, complete the `subscribe_to_e2_nodes` function, which is lacking:
 - Consulting the E2 Node IDs from the SDL, which should be stored in the `e2_nodes` variable
 - Sending the subscription request using the `request` library and saving its response in the `resp` variable
 
+Tip: use the `generate_subscription_request` function to generate the subscription request JSON. 
+
 <p>
 <details>
 <summary>Solution</summary>
