@@ -42,7 +42,8 @@ Therefore, we use two already defined `mtypes` from [OSC's traffic steering xApp
 - `30000` - `TS_UE_LIST`
 - `30001` - `TS_QOE_PRED_REQ`
 
-**EXERCISE X**
+------------------------------------------------------------------------ **EXERCISE 1** ------------------------------------------------------------------------
+
 Edit the config-file from `xapp3rmrsubact` (located in `xapp-3-rmr-sub-act/init/config-file.json`) and `xapp4rmrsubreact` (located in `xapp-4-rmr-sub-react/init/config-file.json`) to add the `mtypes` for them to communicate using RMR:
 - `xapp3rmrsubact` must send `TS_UE_LIST` messages to `xapp4rmrsubreact`
 - `xapp4rmrsubreact` must send `TS_QOE_PRED_REQ` to `xapp3rmrsubact`
@@ -58,7 +59,7 @@ Edit the config-file from `xapp3rmrsubact` (located in `xapp-3-rmr-sub-act/init/
     "name": "rmrdata",
     "container": "xapp3rmrsubactcontainer",
     "port": 4560,
-    "rxMessages": ["RIC_SUB_RESP", "RIC_INDICATION","RIC_SUB_DEL_RESP","TS_QOE_PRED_REQ"],
+    "rxMessages": ["RIC_SUB_RESP","RIC_SUB_DEL_RESP","TS_QOE_PRED_REQ"],
     "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ", "TS_UE_LIST"],
     "policies": [1],
     "description": "rmr data port"
@@ -72,8 +73,8 @@ Edit the config-file from `xapp3rmrsubact` (located in `xapp-3-rmr-sub-act/init/
     "name": "rmrdata",
     "container": "xapp4rmrsubreactcontainer",
     "port": 4560,
-    "rxMessages": ["RIC_SUB_RESP","RIC_SUB_DEL_RESP", "RIC_INDICATION", "TS_UE_LIST"],
-    "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ", "RIC_CONTROL_REQ", "TS_QOE_PRED_REQ"],
+    "rxMessages": ["RIC_SUB_RESP","RIC_SUB_DEL_RESP", "TS_UE_LIST"],
+    "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ", "TS_QOE_PRED_REQ"],
     "policies": [1],
     "description": "rmr data port"
 }
@@ -81,7 +82,6 @@ Edit the config-file from `xapp3rmrsubact` (located in `xapp-3-rmr-sub-act/init/
 
 </details>
 </p>
-
 
 ## Route table
 
@@ -216,8 +216,380 @@ Similarly, on the `RMRXapp` class, we just have to call the `register_callback` 
 rmrxapp.register_callback(handler=simple_handler, message_type=12345)
 ```
 
-**EXERCISE X**
-Make xapp3rmrsubact and xapp4rmrsubreact communicate.
+## RMR exercises
 
+------------------------------------------------------------------------ **EXERCISE 2** ------------------------------------------------------------------------
+
+Edit the source code from `xapp3rmrsubact` (located in `xapp-3-rmr-sub-act/src/customxapp.py`) to implement a loop that, every second, receives RMR messages, sends an RMR message of type `TS_UE_LIST` (`30000`).
+Tip: receive the RMR messages using the `_receive_RMR_messages` function from the `XappRmrSubAct` class.
+
+<p>
+<details>
+<summary>Solution</summary>
+
+Edit the `_loop` function from `XappRmrSubAct` class to:
+
+```python
+def _loop(self):  
+    while not self._shutdown: # True since custom xApp initialization until stop() is called
+        self._receive_RMR_messages() # Call handlers for all received RMR messages
+        self._xapp.rmr_send(payload="Message of type 30000 from the active xApp".encode(), mtype=30000): # Sends an RMR message of type 30000
+        sleep(1) # Sleeps for 1 second
+```
+
+</details>
+</p>
+
+------------------------------------------------------------------------ **EXERCISE 3** ------------------------------------------------------------------------
+
+Edit the source code from `xapp3rmrsubact` (located in `xapp-3-rmr-sub-act/src/customxapp.py`) to implement a handler for RMR messages of type `TS_QOE_PRED_REQ` (`30001`) that logs the received payload.
+This handler will be called by the `_receive_RMR_messages` method from the previous exercise. 
+Tip: register the handler in the `_dispatch` dictionary (it has the format of `{rmr_mtype: handler_function}`) during the `XappRmrSubAct` initialization. 
+
+<p>
+<details>
+<summary>Solution</summary>
+
+Implementing the handler as a method of `XappRmrSubAct` class:
+
+```python
+def _handle_react_xapp_msg(self, xapp:Xapp, summary:dict, sbuf):
+    rcv_payload = summary[rmr.RMR_MS_PAYLOAD].decode() # Decodes the RMR message payload
+    self.logger.info("Received message of type 30001 with payload: {}".format(rcv_payload))
+    xapp.rmr_free(sbuf) # Frees the RMR message buffer
+```
+
+Edit the `__init__` function from `XappRmrSubAct` class to register the handler in the `_dispatch` dictionary:
+
+```python
+# Registering handlers for RMR messages
+self._dispatch = {} # Dictionary for calling handlers of specific message types
+self._dispatch[30001] = self._handle_react_xapp_msg
+```
+
+</details>
+</p>
+
+------------------------------------------------------------------------ **EXERCISE 4** ------------------------------------------------------------------------
+
+Edit the source code from `xapp4rmrsubreact` (located in `xapp-4-rmr-sub-react/src/customxapp.py`) to implement a handler for RMR messages of type `TS_UE_LIST` (`30000`) that logs the received payload and replies the sender with a message of type `TS_QOE_PRED_REQ` (`30001`) containing a different payload.
+Tip: register the handler using the `register_callback` method from the `RMRXapp` object during the `XappRmrSubAct` initialization.
+
+<p>
+<details>
+<summary>Solution</summary>
+
+Implementing the handler as a method of `XappRmrSubReact` class:
+
+```python
+def active_xapp_handler(self, rmr_xapp: RMRXapp, summary: dict, sbuf):
+    self.logger.info("Received active-xapp RMR message with payload: {}.".format(summary[rmr.RMR_MS_PAYLOAD].decode()))
+    rmr_xapp.rmr_rts(sbuf, new_payload="Received message correctly".encode(), new_mtype=30001) # Responding to the active-xapp message
+    rmr_xapp.rmr_free(sbuf)
+```
+
+Edit the `__init__` function from `XappRmrSubReact` class to register the handler:
+
+```python
+# Registering handlers for RMR messages
+self._rmrxapp.register_callback(handler=self.active_xapp_handler, message_type=30000)
+```
+
+</details>
+</p>
+
+------------------------------------------------------------------------ **EXERCISE 5** ------------------------------------------------------------------------
+
+Run and check the logs of both `xapp3rmrsubact` and `xapp4rmrsubreact` xApps.
+Tip: use the `update_xapp.sh` and `log_xapp.sh` script at the xApps directories.
+
+<p>
+<details>
+<summary>Solution</summary>
+
+Entering the `xapp3rmrsubact` xApp directory (assuming you are at this repository root) and executing its installation and log scripts:
+
+```bash
+cd exercise-xapps/xapp-3-rmr-sub-act
+bash update_xapp.sh
+bash log_xapp.sh
+```
+
+Entering the `xapp4rmrsubreact` xApp directory (assuming you are at this repository root) and executing its installation and log scripts:
+
+```bash
+cd exercise-xapps/xapp-4-rmr-sub-react
+bash update_xapp.sh
+bash log_xapp.sh
+```
+
+</details>
+</p>
+
+------------------------------------------------------------------------ **EXERCISE 6** ------------------------------------------------------------------------
+
+For preparing the ambient for the next section, uninstall the `xapp3rmrsubact` xApp, so `xapp4rmrsubreact` does not receive any unecessary RMR message.
+
+<p>
+<details>
+<summary>Solution</summary>
+
+Just execute:
+
+```bash
+dms_cli uninstall xapp3rmrsubact ricxapp
+```
+
+</details>
+</p>
 
 # E2 Node subscription
+
+In OSC's Near-RT RIC, the xApps communicate with E2 Nodes using subscriptions.
+After subscribing to an E2 Node, it can send messages to the xApp via the E2 Termination (E2Term), which can respond with control messages, for example.
+
+An xApp should subscribe to an E2 Node by sending a **subscription request** (a JSON) to SubMgr via HTTP POST.
+The `ricxappframe` has a library for subscriptions (`ricxappframe.xapp_subscribe`), but its actual version has some issues: it sends a subscription request with the wrong keys (using snake case instead of camel case) and the unsubscribe method uses the wrong URI (adding `/subscriptions` to a path that already has it).
+Therefore, in this workshop, we choose to subscribe and unsubscribe from E2 Nodes directly sending HTTP messages through the [requests Python library](https://pypi.org/project/requests/).
+
+## Identifying E2 Nodes
+
+To send a subscription, the `inventory_name` of the E2 Node (eNB or gNB) must be informed as its identifier.
+The `inventory_name` is registered by the E2 Node in the SDL when connecting to the Near-RT RIC.
+Consulting the SDL to obtain the `inventory_name` for all E2 Nodes can be done by executing the `GetListNodebIds` method of `Xapp` and ``RMRXapp` classes.
+It will return a list of `NbIdentity`, an object containing the `inventory_name` as its atribute.
+Below we exemplify a method for `xapp4rmrsubreact` xApp that logs all registered values of `inventory_name`:
+
+```python
+def log_inventory_names(self, rmrxapp: RMRXapp):
+    nb_ids = rmrxapp.GetListNodebIds()
+    self.logger.info(f"Available E2 Nodes: {[nb_id.inventory_name for nb_id in nb_ids]}")   
+```
+
+## Subscribing to E2 Nodes
+
+The subscription request is sent to the SubMgr so it generates a subscription ID and triggers RtMgr to update the routes between the xApp and the E2 Node with the generated `subid`.
+The subscription request is a JSON containing informations about how the E2 Node should inform the xApp.
+It is sent as body of an HTTP POST to SubMgr's HTTP service, at the path `ric/v1/subscriptions`.
+The complete URI is: `http://service-ricplt-submgr-http.ricplt.svc.cluster.local:8088/ric/v1/subscriptions`.
+Below we have the subscription request used for subscribing to the modified E2SIM running in the [Blueprint v1](https://github.com/LABORA-INF-UFG/openran-br-blueprint/wiki/OpenRAN@Brasil-Blueprint-v1).
+
+```python
+{
+    "SubscriptionId":"",
+    "ClientEndpoint": {
+        "Host":"service-ricxapp-xapp4rmrsubreact-http.ricxapp",
+        "HTTPPort":8080,
+        "RMRPort":4560
+    },
+    "Meid":inventory_name, # nobe B inventory_name
+    "RANFunctionID":1, # Default = 0
+    "E2SubscriptionDirectives":{ # Optional
+        "E2TimeoutTimerValue":2, # Default = 2
+        "E2RetryCount":2, # Default = 2
+        "RMRRoutingNeeded":True # Default = True
+    },
+    "SubscriptionDetails":[ # Can make multiple subscriptions
+        {
+            "XappEventInstanceId":subscription_transaction_id, # "Transaction id"
+            "EventTriggers":[2], # Default = [0]
+            "ActionToBeSetupList":[
+                {
+                    "ActionID": 1,
+                    "ActionType": "insert", # Default = "report"
+                    "ActionDefinition": [3], # Default = [0]
+                    "SubsequentAction":{
+                        "SubsequentActionType":"continue",
+                        "TimeToWait":"w10ms" # Default = "zero"
+                    }
+                }
+            ]
+        }
+    ]
+}
+```
+
+Note that we specify a `subscription_transaction_id` as `XappEventInstanceId`.
+This value is used only to identify the transaction of requesting a subscription and can be random.
+
+The subscription request response is a JSON with two fields:
+- `"SubscriptionId"`: a string with the subscription ID
+- `"SubscriptionInstances"`: a dictionary with information about the subscription, generally null at first
+
+After a moment, the SubMgr should send an HTTP POST to the xApp at the path `/ric/v1/subscriptions/response` containing the same `"SubscriptionId"` and an updated `"SubscriptionInstances"`.
+If there is any error during the subscription, such as the RtMgr not being able to create routes for the xApp, it is contained in the `"SubscriptionInstances"` dictionary.
+The `xapp4rmrsubreact` already has a regitered HTTP handler to receive subscription responses.
+
+## Unsubscribing to E2 Nodes
+
+It is important to delete a subscription that is no longer needed (e.g. when the xApp terminates) so we avoid having problems with the next subscriptions.
+To unsubscribe, we send a **subscription delete request** to the SubMgr, which consists of sending HTTP DELETE at the `/ric/v1/subscriptions/<SUB_ID>` path.
+The `"SubscriptionId"` field from both subscription responses should be put in the place of `<SUB_ID>`.
+The complete URI is: `http://service-ricplt-submgr-http.ricplt.svc.cluster.local:8088/ric/v1/subscriptions/<SUB_ID>`.
+This will trigger RtMgr to erase the routes between the xApp and the E2 Node, while also informing the E2 Node that the subscription has ended.
+
+## Subscription exercises
+
+In this class, we will modify the source code of `xapp4rmrsubreact`, so it:
+- Subscribes to all available E2 Nodes during start up
+- Deletes every active subscription when terminating
+- Deletes every active subscription and then subscribes to all available E2 Nodes after being triggered by an HTTP GET at path `ric/v1/resubscribe`.
+
+The next exercises assume you are in the `xapp4rmrsubreact` directory (located at `exercise-xapps/xapp-4-rmr-sub-react/`).
+
+------------------------------------------------------------------------ **EXERCISE 7** ------------------------------------------------------------------------
+
+Edit the `xapp4rmrsubreact` config-file so the xApp can receive `RIC_INDICATION` and send `RIC_CONTROL_REQ`.
+
+<p>
+<details>
+<summary>Solution</summary>
+
+The `rmrdata` port should be:
+
+```json
+{
+    "name": "rmrdata",
+    "container": "xapp4rmrsubreactcontainer",
+    "port": 4560,
+    "rxMessages": ["RIC_SUB_RESP","RIC_SUB_DEL_RESP", "TS_UE_LIST", "RIC_INDICATION"],
+    "txMessages": ["RIC_SUB_REQ","RIC_SUB_DEL_REQ", "TS_QOE_PRED_REQ", "RIC_CONTROL_REQ"],
+    "policies": [1],
+    "description": "rmr data port"
+}
+```
+
+</details>
+</p>
+
+------------------------------------------------------------------------ **EXERCISE 8** ------------------------------------------------------------------------
+
+During the `start` method of `xapp4rmrsubreact` (which is called after initializing the xApp), subscribe to all E2 Nodes using the `subscribe_to_e2_nodes` function.
+Note that the `self._rmrxapp.run()` execution will block the `start` method.
+
+Also, complete the `subscribe_to_e2_nodes` function, which is lacking:
+- Consulting the E2 Node IDs from the SDL, which should be stored in the `e2_nodes` variable
+- Sending the subscription request using the `request` library and saving its response in the `resp` variable
+
+<p>
+<details>
+<summary>Solution</summary>
+
+The `start` method should be:
+
+```python
+def start(self):
+    """
+    Starts the xApp loop.
+    """ 
+    self.subscribe_to_e2_nodes()
+    self._rmrxapp.run() 
+```
+
+The `subscribe_to_e2_nodes` method should be:
+
+```python
+def subscribe_to_e2_nodes(self):
+    """
+    Subscribes to all available E2 nodes.
+    """
+    e2_nodes = self._rmrxapp.GetListNodebIds()
+    
+    sub_trs_id = self._rmrxapp.sdl_get(namespace="xapp4rmrsubreact", key="subscription_transaction_id")
+    if sub_trs_id is None:
+        sub_trs_id = 54321
+    for node in e2_nodes:
+        self.logger.info(f"Subscribing to node {node.inventory_name}") # We use the inventory name as the node ID 
+
+        # Sending the subscription request
+        resp = requests.post(
+            "http://service-ricplt-submgr-http.ricplt.svc.cluster.local:8088/ric/v1/subscriptions",
+            json=self.generate_subscription_request(node.inventory_name, sub_trs_id)
+        )
+        data = resp.json() # {"SubscriptionId": "my_string_id", "SubscriptionInstances": null}
+        status = resp.status_code
+        reason = resp.reason
+
+        self.sub_id_to_node[data["SubscriptionId"]] = node.inventory_name
+        self.subscription_responses[node.inventory_name] = data
+        self.logger.debug(f"Subscription response from {node.inventory_name}: status = {status}, reason = {reason}, data = {data}")
+        self._rmrxapp.sdl_set(namespace="xapp4rmrsubreact", key="subscription_transaction_id", value=sub_trs_id+1) # Update sub_trs_id on SDL
+```
+
+</details>
+</p>
+
+------------------------------------------------------------------------ **EXERCISE 9** ------------------------------------------------------------------------
+
+During the `stop` method of `xapp4rmrsubreact` (which is called during the xApp termination), unsubscribe of all E2 Nodes using the `unsubscribe_from_e2_nodes` method.
+Do this as the first step of the `stop` routine.
+
+Also, complete the `unsubscribe_from_e2_nodes` method, which is lacking:
+- Sending the subscription delete request using the `request` library and saving its response in the `resp` variable
+
+<p>
+<details>
+<summary>Solution</summary>
+
+The `stop` method should be:
+
+```python
+def stop(self):
+    """
+    Terminates the xApp. Can only be called if the xApp is running in threaded mode.
+    """
+    self._shutdown = True
+    self.unsubscribe_from_e2_nodes()
+    self.logger.info("Calling framework termination to unregister the xApp from AppMgr.")
+    self._rmrxapp.stop()
+    self.http_server.stop()
+```
+
+The `unsubscribe_from_e2_nodes` method should be:
+
+```python
+def unsubscribe_from_e2_nodes(self):
+    """
+    Unsubscribes from all subscribed E2 nodes (stored in the self.subscription_responses dict).
+    """
+            
+    for sub_id in self.sub_id_to_node.keys():
+        resp = requests.delete(
+            f"http://service-ricplt-submgr-http.ricplt.svc.cluster.local:8088/ric/v1/subscriptions/{sub_id}"
+        )
+        status = resp.status_code
+        reason = resp.reason
+        self.logger.info(f"Unsubscribe from sub id {sub_id}: status = {status}, reason = {reason}")
+```
+
+</details>
+</p>
+
+------------------------------------------------------------------------ **EXERCISE 10** ------------------------------------------------------------------------
+
+Run `xapp4rmrsubreact` and get its logs:
+
+```bash
+bash update_xapp.sh
+bash log_xapp.sh
+```
+
+Check the logs of both E2SIMs by executing:
+
+```bash
+bash check_e2_node.sh 1
+bash check_e2_node.sh 2
+```
+
+If the xApp is running for a few seconds and its logs show that the subscription could not be done, this is due to some instabilities in the xApp pipeline and/or the Near-RT RIC components (SubMgr, AppMgr) and the E2SIMs.
+As workaround, try triggering the unsubscribe and subscribe routine of `xapp4rmrsubreact` by sending a `curl` to it with the script below:
+
+```bash
+bash resubscribe.sh
+```
+
+If nothing worked, try restarting the E2SIMs and some important Near-RT RIC components with the script below:
+
+```bash
+bash restart_e2sims.sh
+```

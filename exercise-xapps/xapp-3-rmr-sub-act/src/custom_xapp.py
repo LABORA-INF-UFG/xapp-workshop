@@ -45,7 +45,6 @@ class XappRmrSubAct:
 
         # Registering handlers for RMR messages
         self._dispatch = {} # Dictionary for calling handlers of specific message types
-        self._dispatch[30001] = self._handle_react_xapp_msg
 
         # Starting a threaded HTTP server listening to any host at port 8080 
         self.http_server = xapp_rest.ThreadedHTTPServer("0.0.0.0", 8080)
@@ -78,11 +77,6 @@ class XappRmrSubAct:
         Loops sending a message to the reactive xApp.
         """     
         while not self._shutdown: # True since custom xApp initialization until stop() is called
-            self._receive_RMR_messages() # Call handlers for all received RMR messages
-            if not self._xapp.rmr_send(payload="Message of type 30000 from the active xApp".encode(), mtype=30000): # Sends an RMR message of type 30000
-                self.logger.error("Message of type 30000 could not be sent")
-            else:
-                self.logger.info("Message of type 30000 sent to the reactive xApp.")
             sleep(1) # Sleeps for 1 second
             
 
@@ -107,14 +101,6 @@ class XappRmrSubAct:
         )
         xapp.rmr_free(sbuf)
     
-    def _handle_react_xapp_msg(self, xapp:Xapp, summary:dict, sbuf):
-        """
-        Handler for RMR messages of type 30001 received from the reactive xApp.
-        """
-        rcv_payload = summary[rmr.RMR_MS_PAYLOAD].decode() # Decodes the RMR message payload
-        self.logger.info("Received message of type 30001 with payload: {}".format(rcv_payload))
-        xapp.rmr_free(sbuf) # Frees the RMR message buffer
-
     def _handle_signal(self, signum: int, frame):
         """
         Function called when a Kubernetes signal is received to stop the xApp execution.

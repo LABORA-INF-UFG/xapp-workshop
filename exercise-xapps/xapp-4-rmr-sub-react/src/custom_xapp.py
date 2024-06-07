@@ -44,7 +44,6 @@ class XappRmrSubReact:
         )
 
         # Registering handlers for RMR messages
-        self._rmrxapp.register_callback(handler=self.active_xapp_handler, message_type=30000)
         self._rmrxapp.register_callback(handler=self.ric_indication_handler, message_type=12050)
 
         # Registering a handler for terminating the xApp after TERMINATE, QUIT, or INTERRUPT signals
@@ -67,14 +66,6 @@ class XappRmrSubReact:
         self.logger.info("xApp is ready.")
         
     # ------------------ RMR MESSAGE HANDLERS
-
-    def active_xapp_handler(self, rmr_xapp: RMRXapp, summary: dict, sbuf):
-        """
-        Handler for the active xapp RMR message.
-        """
-        self.logger.info("Received active-xapp RMR message with summary: {}.".format(summary))
-        rmr_xapp.rmr_rts(sbuf, new_payload="Received message correctly".encode(), new_mtype=30000) # Responding to the active-xapp message
-        rmr_xapp.rmr_free(sbuf)
     
     def default_rmr_handler(self, rmrxapp: RMRXapp, summary: dict, sbuf):
         """
@@ -114,44 +105,16 @@ class XappRmrSubReact:
         """
         Subscribes to all available E2 nodes.
         """
-        e2_nodes = self._rmrxapp.GetListNodebIds()
-        self.subscriber = xapp_subscribe.NewSubscriber(
-            uri="http://service-ricplt-submgr-http.ricplt.svc.cluster.local:8088/ric/v1/subscriptions",
-            local_port=8080,
-            rmr_port=4560
-        )
+        e2_nodes = None
         
         sub_trs_id = self._rmrxapp.sdl_get(namespace="xapp4rmrsubreact", key="subscription_transaction_id")
         if sub_trs_id is None:
             sub_trs_id = 54321
         for node in e2_nodes:
             self.logger.info(f"Subscribing to node {node.inventory_name}") # We use the inventory name as the node ID 
-            
-            # DEPRECATED - WE DO NOT USE xapp_subscribe BECAUSE IT DOES NOT WORK
-            # # Workouround class to send the correct subscription request body,
-            # # since the SubscriptionParams object has the wrong keys (lowercase and with underscores)
-            # class Params:
-            #     def __init__(self, my_dict):
-            #         self.my_dict = my_dict
-            #     def to_dict(self):
-            #         return self.my_dict
-            
-            # # Sending the subscription request
-            # data, reason, status = self.subscriber.Subscribe(
-            #     subs_params= Params(self.generate_subscription_request(node.inventory_name, sub_trs_id))
-            #     # subs_params = self.generate_sub_params(
-            #     #     subscriber=self.subscriber,
-            #     #     inventory_name=node.inventory_name,
-            #     #     subscription_transaction_id=sub_trs_id
-            #     # )
-            # )
-            # self.subscription_responses[node.inventory_name] = json.loads(data) # {"SubscriptionId": "my_string_id", "SubscriptionInstances": null}
 
             # Sending the subscription request
-            resp = requests.post(
-                "http://service-ricplt-submgr-http.ricplt.svc.cluster.local:8088/ric/v1/subscriptions",
-                json=self.generate_subscription_request(node.inventory_name, sub_trs_id)
-            )
+            resp = None
             data = resp.json() # {"SubscriptionId": "my_string_id", "SubscriptionInstances": null}
             status = resp.status_code
             reason = resp.reason
@@ -165,18 +128,9 @@ class XappRmrSubReact:
         """
         Unsubscribes from all subscribed E2 nodes (stored in the self.subscription_responses dict).
         """
-        
-        # DEPRECATED - WE DO NOT USE xapp_subscribe BECAUSE IT DOES NOT WORK
-        # # Using a workaround to fix the unsubscribe URI because the framework adds /subscription/
-        # self.subscriber.uri = "http://service-ricplt-submgr-http.ricplt.svc.cluster.local:8088/ric/v1"
-        # for node in self.subscription_responses.keys():
-        #     data, reason, status = self.subscriber.UnSubscribe(subs_id=self.subscription_responses[node]["SubscriptionId"])
-        #     self.logger.info(f"Unsubscribe from node {node}: status = {status}, reason = {reason}, data = {data}")
-        
+                
         for sub_id in self.sub_id_to_node.keys():
-            resp = requests.delete(
-                f"http://service-ricplt-submgr-http.ricplt.svc.cluster.local:8088/ric/v1/subscriptions/{sub_id}"
-            )
+            resp = None
             status = resp.status_code
             reason = resp.reason
             self.logger.info(f"Unsubscribe from sub id {sub_id}: status = {status}, reason = {reason}")
@@ -271,7 +225,6 @@ class XappRmrSubReact:
         """
         Starts the xApp loop.
         """ 
-        self.subscribe_to_e2_nodes()
         self._rmrxapp.run()    
 
     def stop(self):
@@ -320,49 +273,3 @@ class XappRmrSubReact:
                 }
             ]
         }
-    
-    # DEPRECATED - WE DO NOT USE xapp_subscribe BECAUSE IT DOES NOT WORK
-    # # Not used because the SubscriptionParams object has the wrong keys
-    # def generate_sub_params(self, subscriber:xapp_subscribe.NewSubscriber, inventory_name, subscription_transaction_id):
-    #     client_endpoint = subscriber.SubscriptionParamsClientEndpoint(
-    #         host="service-ricxapp-xapp4rmrsubreact-http.ricxapp",
-    #         http_port=8080,
-    #         rmr_port=4560
-    #     )
-
-    #     e2_subscription_directives = subscriber.SubscriptionParamsE2SubscriptionDirectives(
-    #         e2_timeout_timer_value=2,
-    #         e2_retry_count=2,
-    #         rmr_routing_needed=True
-    #     )
-
-    #     subsequent_action = subscriber.SubsequentAction(
-    #         subsequent_action_type="continue",
-    #         time_to_wait="w10ms"
-    #     )
-
-    #     action_to_be_setup = subscriber.ActionToBeSetup(
-    #         action_id=1,
-    #         action_type="insert",
-    #         action_definition=(3,), 
-    #         subsequent_action=subsequent_action
-    #     )
-
-    #     subscription_details = subscriber.SubscriptionDetail(
-    #         xapp_event_instance_id=subscription_transaction_id,
-    #         event_triggers=(2,),
-    #         action_to_be_setup_list=action_to_be_setup
-    #     )
-
-    #     subscription_params = subscriber.SubscriptionParams(
-    #         subscription_id="",
-    #         client_endpoint=client_endpoint,
-    #         meid=inventory_name,
-    #         ran_function_id = 1,
-    #         e2_subscription_directives=e2_subscription_directives,
-    #         subscription_details=subscription_details
-    #     )
-
-    #     self.logger.info (f"Sub params: {subscription_params.to_dict()}")
-
-    #     return subscription_params
