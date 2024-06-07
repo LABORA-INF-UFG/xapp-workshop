@@ -328,20 +328,12 @@ bash log_xapp.sh
 
 ------------------------------------------------------------------------ **EXERCISE 6** ------------------------------------------------------------------------
 
-For preparing the ambient for the next section, uninstall the `xapp3rmrsubact` xApp, so `xapp4rmrsubreact` does not receive any unecessary RMR message.
-
-<p>
-<details>
-<summary>Solution</summary>
-
-Just execute:
+Prepare the ambient for the next section by uninstall `xapp3rmrsubact` and `xapp4rmrsubreact`:
 
 ```bash
 dms_cli uninstall xapp3rmrsubact ricxapp
+dms_cli uninstall xapp4rmrsubreact ricxapp
 ```
-
-</details>
-</p>
 
 # E2 Node subscription
 
