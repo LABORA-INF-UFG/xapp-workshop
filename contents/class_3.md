@@ -218,6 +218,11 @@ rmrxapp.register_callback(handler=simple_handler, message_type=12345)
 
 ## RMR exercises
 
+In this subsection, you will modify `xapp3rmrsubact` and `xapp4rmrsubreact` so they can communicate using RMR messages.
+The figure below illustrates how the finished xApps will behave.
+
+![xApps RMR communication](/figs/workshop_xapp_rmr.png)
+
 ------------------------------------------------------------------------ **EXERCISE 2** ------------------------------------------------------------------------
 
 Edit the source code from `xapp3rmrsubact` (located in `xapp-3-rmr-sub-act/src/customxapp.py`) to implement a loop that, every second, receives RMR messages, sends an RMR message of type `TS_UE_LIST` (`30000`).
@@ -422,10 +427,15 @@ This will trigger RtMgr to erase the routes between the xApp and the E2 Node, wh
 
 ## Subscription exercises
 
-In this class, we will modify the source code of `xapp4rmrsubreact`, so it:
+In this subsection, you will modify the source code of `xapp4rmrsubreact`, so it:
 - Subscribes to all available E2 Nodes during start up
 - Deletes every active subscription when terminating
 - Deletes every active subscription and then subscribes to all available E2 Nodes after being triggered by an HTTP GET at path `ric/v1/resubscribe`.
+
+The figures below illustrate how `xapp4rmrsubreact` will behave when finished.
+
+![xApp subscription startup](/figs/workshop_xapp_subscribe_startup.png)
+![xApp subscription loop and termination](/figs/workshop_xapp_subscribe_loop_termination.png)
 
 The next exercises assume you are in the `xapp4rmrsubreact` directory (located at `exercise-xapps/xapp-4-rmr-sub-react/`).
 
