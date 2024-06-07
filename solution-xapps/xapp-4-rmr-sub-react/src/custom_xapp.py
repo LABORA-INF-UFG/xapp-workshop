@@ -73,7 +73,7 @@ class XappRmrSubReact:
         Handler for the active xapp RMR message.
         """
         self.logger.info("Received active-xapp RMR message with summary: {}.".format(summary))
-        rmr_xapp.rmr_rts(sbuf, new_payload="Received message correctly".encode(), new_mtype=30000) # Responding to the active-xapp message
+        rmr_xapp.rmr_rts(sbuf, new_payload="Received message correctly".encode(), new_mtype=30001) # Responding to the active-xapp message
         rmr_xapp.rmr_free(sbuf)
     
     def default_rmr_handler(self, rmrxapp: RMRXapp, summary: dict, sbuf):
@@ -114,13 +114,15 @@ class XappRmrSubReact:
         """
         Subscribes to all available E2 nodes.
         """
+
+        # DEPRECATED - WE DO NOT USE xapp_subscribe BECAUSE IT DOES NOT WORK
+        # self.subscriber = xapp_subscribe.NewSubscriber(
+        #     uri="http://service-ricplt-submgr-http.ricplt.svc.cluster.local:8088/ric/v1/subscriptions",
+        #     local_port=8080,
+        #     rmr_port=4560
+        # )
+
         e2_nodes = self._rmrxapp.GetListNodebIds()
-        self.subscriber = xapp_subscribe.NewSubscriber(
-            uri="http://service-ricplt-submgr-http.ricplt.svc.cluster.local:8088/ric/v1/subscriptions",
-            local_port=8080,
-            rmr_port=4560
-        )
-        
         sub_trs_id = self._rmrxapp.sdl_get(namespace="xapp4rmrsubreact", key="subscription_transaction_id")
         if sub_trs_id is None:
             sub_trs_id = 54321
