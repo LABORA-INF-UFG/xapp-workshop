@@ -585,3 +585,13 @@ If nothing worked, try restarting the E2SIMs and some important Near-RT RIC comp
 ```bash
 bash restart_e2sims.sh
 ```
+
+----------------------------------------------------------------------- **EXERCISE 11** -----------------------------------------------------------------------
+
+Uninstall `xapp4rmrsubreact` and check the logs from both E2SIMs:
+
+```bash
+dms_cli uninstall xapp4rmrsubreact ricxapp
+bash check_e2_node.sh 1
+bash check_e2_node.sh 2
+```
