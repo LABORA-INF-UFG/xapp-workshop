@@ -16,3 +16,5 @@ Workshop for writing xApps for the OSC platform using the OSC Python xApp framew
 This workshop is part of the OpenRAN@Brasil Fase 2 project from RNP.
 
 The entirety of this workshop was made by Daniel "Dante" Campos (UFG).
+
+For contact, send an e-mail to: dante_campos@discente.ufg.br
