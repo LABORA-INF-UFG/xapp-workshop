@@ -10,3 +10,9 @@ Workshop for writing xApps for the OSC platform using the OSC Python xApp framew
 - [Class 1: Managing, checking, and configuring xApps](contents/class_1.md)
 - [Class 2: xApp overview, logging, SDL, and REST](contents/class_2.md)
 - [Class 3: RMR communication and E2 Nodes subscription](contents/class_3.md)
+
+# Credits
+
+This workshop is part of the OpenRAN@Brasil Fase 2 project from RNP.
+
+The entirety of this workshop was made by Daniel "Dante" Campos (UFG).
